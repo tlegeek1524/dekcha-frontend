@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import "../css/AdminLogin.css"; // ปรับให้ตรงกับโฟลเดอร์ที่เก็บไฟล์ CSS
+import '../css/adminlogin.css'; // ปรับให้ตรงกับโฟลเดอร์ที่เก็บไฟล์ CSS
 function AdminLogin() {
   const [user, setUser] = useState("");
   const [password, setPassword] = useState("");
