@@ -1,0 +1,97 @@
+/* CSS สำหรับ component PointChangeNotifier - ธีมคาเฟ่ */
+
+.point-change-notification {
+    position: fixed;
+    top: 25px;
+    right: 25px;
+    z-index: 1000;
+    border-radius: 12px;
+    overflow: hidden;
+    animation: slideIn 0.5s ease-out forwards, fadeOut 0.5s ease-in forwards 2.5s;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+    font-family: 'Roboto', sans-serif;
+    background: #F5E8DC; /* สีครีม */
+    color: #5D4037; /* สีน้ำตาลเข้ม */
+  }
+  
+.notification-content {
+    display: flex;
+    align-items: center;
+    padding: 12px 16px;
+    gap: 8px;
+    background: #D7CCC8; /* สีน้ำตาลอ่อน */
+    border-left: 4px solid #8D6E63; /* เส้นขอบสีน้ำตาล */
+  }
+  
+.notification-icon {
+    width: 24px;
+    height: 24px;
+    filter: brightness(0.8);
+  }
+  
+.point-difference {
+    font-weight: bold;
+    font-size: 1.3em;
+    color: #4E342E; /* สีน้ำตาลเข้ม */
+  }
+  
+.point-text {
+    font-size: 0.9em;
+    opacity: 0.9;
+    color: #6D4C41; /* สีน้ำตาลกลาง */
+  }
+  
+/* สีสำหรับการเพิ่มและลดคะแนน */
+.point-change-notification.positive {
+    background: #A5D6A7; /* สีเขียวอ่อน */
+    color: #2E7D32; /* สีเขียวเข้ม */
+  }
+  
+.point-change-notification.negative {
+    background: #EF9A9A; /* สีแดงอ่อน */
+    color: #C62828; /* สีแดงเข้ม */
+  }
+  
+/* Animation สำหรับการเข้าและออกของการแจ้งเตือน */
+@keyframes slideIn {
+    from {
+      transform: translateX(100%);
+      opacity: 0;
+    }
+    to {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
+  
+@keyframes fadeOut {
+    from {
+      opacity: 1;
+    }
+    to {
+      opacity: 0;
+    }
+  }
+  
+/* เพิ่มเอฟเฟกต์พิเศษเมื่อคะแนนเปลี่ยนแปลง */
+.point-counter.changed {
+    animation: pulse 0.6s ease;
+  }
+  
+@keyframes pulse {
+    0%, 100% {
+      transform: scale(1);
+    }
+    50% {
+      transform: scale(1.1);
+    }
+  }
+  
+/* รองรับการแสดงผลบนมือถือ */
+@media (max-width: 768px) {
+    .point-change-notification {
+      top: 15px;
+      right: 15px;
+      max-width: calc(100% - 30px);
+    }
+  }
