@@ -1,4 +1,3 @@
-/* Usermenu.css - ปรับแต่งสำหรับความเป็นมิตรกับมือถือและแท็บเล็ต */
 * {
   margin: 0;
   padding: 0;
@@ -95,6 +94,8 @@ body {
   font-size: 0.95rem;
   font-weight: 600;
   margin-bottom: 2px;
+  color: white;
+  margin-left: 5px;
 }
 
 .nav-userpoint {
@@ -544,428 +545,219 @@ body {
   margin-bottom: 1.5rem;
 }
 
-.user-card-header {
+.menu-item-card.horizontal {
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  align-items: stretch;
+  gap: 0;
+  padding: 0;
+  min-height: 150px;
+  background: #fff;
+  border-radius: 20px;
+  box-shadow: 0 4px 24px #a75d5d22;
+  margin-bottom: 1.5rem;
+  border: none;
+  overflow: hidden;
+  transition: box-shadow 0.2s;
+}
+
+.menu-item-card.horizontal:hover {
+  box-shadow: 0 8px 32px #d3756b33;
+}
+
+.menu-image-showcase {
+  width: 100%;
+  height: 100%;
+  background: #fff6f0;
   display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 1.25rem;
-  padding-bottom: 1rem;
-  border-bottom: 1px solid #eee;
+  align-items: stretch;
+  justify-content: stretch;
 }
 
-.user-card-icon {
-  width: 24px;
-  height: 24px;
-  stroke: var(--primary-color);
+.menu-item-image-showcase {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-top-left-radius: 20px;
+  border-bottom-left-radius: 20px;
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+  display: block;
+  filter: brightness(0.98) saturate(1.04);
+  border-right: 2px solid #ffc3a1;
 }
 
-.user-card-header h2 {
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.user-card-content {
+.menu-item-detail.modern {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-}
-
-/* Menu section */
-.menu-section {
-  background-color: var(--bg-light);
-  border-radius: var(--border-radius);
-  box-shadow: var(--shadow-sm);
-  padding: var(--card-padding);
-  margin-bottom: 1.5rem;
-}
-
-.section-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1.25rem;
-  padding-bottom: 0.75rem;
-  border-bottom: 1px solid #eee;
-}
-
-.section-header h3 {
-  font-size: 1.15rem;
-  font-weight: 600;
-  color: var(--text-primary);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.refresh-menu-button {
-  background: none;
-  border: none;
-  display: flex;
-  align-items: center;
   justify-content: center;
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  cursor: pointer;
-  transition: background-color 0.2s;
+  align-items: flex-start;
+  min-width: 0;
+  width: 100%;
+  gap: 12px;
+  padding: 1.5rem 1.5rem 1.5rem 1.5rem;
+  background: transparent;
+  border-radius: 0 20px 20px 0;
 }
 
-.refresh-menu-button:hover {
-  background-color: rgba(0, 0, 0, 0.05);
+.menu-item-detail.modern h4 {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #a75d5d;
+  margin-bottom: 2px;
+  letter-spacing: 0.2px;
 }
 
-.refresh-menu-button svg {
-  width: 20px;
-  height: 20px;
-  stroke: var(--primary-color);
-}
-
-/* Menu items */
-.menu-items-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 16px;
-}
-
-.menu-item-card {
-  background-color: #f9f9f9;
-  border-radius: 10px;
-  padding: 1rem;
-  border: 1px solid #eee;
-  transition: transform 0.2s, box-shadow 0.2s, opacity 0.5s ease-in-out;
-  opacity: 0;
-  transform: translateY(20px);
-  animation: fadeInUp 0.5s ease-in-out forwards;
-}
-
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.menu-item-card:nth-child(1) {
-  animation-delay: 0.1s;
-}
-
-.menu-item-card:nth-child(2) {
-  animation-delay: 0.2s;
-}
-
-.menu-item-card:nth-child(3) {
-  animation-delay: 0.3s;
-}
-
-.menu-item-card:nth-child(4) {
-  animation-delay: 0.4s;
-}
-
-/* Add more nth-child rules if you have more menu items */
-
-.menu-item-card {
-  background-color: #f9f9f9;
-  border-radius: 10px;
-  padding: 1rem;
-  border: 1px solid #eee;
-  transition: transform 0.2s, box-shadow 0.2s;
-}
-
-.menu-item-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
-}
-
-.menu-item-card h4 {
-  font-size: 1.05rem;
-  font-weight: 600;
-  margin-bottom: 6px;
-  color: var(--text-primary);
-}
-
-.menu-item-card p {
-  font-size: 0.9rem;
-  color: var(--text-secondary);
-  margin-bottom: 12px;
-  line-height: 1.4;
-}
-
-/* Progress bar */
-.progress-container {
-  background-color: #e0e0e0;
-  border-radius: 10px;
-  overflow: hidden;
-  height: 8px;
-  margin: 8px 0;
-}
-
-.progress-bar {
-  background-color: #f5b971;
-  height: 100%;
-  transition: width 0.3s ease;
-}
-
-.progress-bar.sufficient {
-  background-color: var(--success-color);
+.menu-item-detail.modern p {
+  font-size: 1rem;
+  color: #d3756b;
+  margin-bottom: 8px;
 }
 
 .menu-info {
+  width: 100%;
+  margin-top: 0.5rem;
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  margin-top: 8px;
-  font-size: 0.85rem;
+  gap: 18px;
 }
 
-.progress-text {
-  color: var(--text-secondary);
+.progress-container {
+  flex: 1 1 0%;
+  background: #ffe7d6;
+  border-radius: 16px;
+  overflow: hidden;
+  height: 38px;
+  margin: 0;
+  width: 100%;
+  position: relative;
+  box-shadow: 0 2px 8px #f0997d33;
+  display: flex;
+  align-items: center;
+  min-width: 120px;
+}
+
+.progress-bar {
+  background: linear-gradient(90deg, #f0997d 0%, #d3756b 100%);
+  height: 100%;
+  transition: width 1.2s cubic-bezier(0.25, 0.46, 0.45, 0.94); /* Smoother and slower for decreasing */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  min-width: 40px;
+}
+
+/* เมื่อ progress เป็น 0% ให้ซ่อน progress bar */
+.progress-bar.empty {
+  background: transparent;
+  min-width: 0;
+  width: 0 !important;
+}
+
+.progress-bar.sufficient {
+  background: linear-gradient(90deg, #d3756b 0%, #a75d5d 100%);
+}
+
+.progress-label {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 1.08rem;
+  font-weight: 700;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 2;
+  color: #fff;
+  letter-spacing: 0.5px;
+  text-shadow: 0 2px 8px #a75d5d44, 0 1px 2px #fff8;
+}
+
+/* เมื่อ progress เป็น 0% ปรับสี text ให้เห็นบน background */
+.progress-label.empty {
+  color: #a75d5d;
+  text-shadow: none;
+}
+
+/* Alternative option: Different transitions for increasing vs decreasing */
+.progress-bar.increasing {
+  transition: width 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+.progress-bar.decreasing {
+  transition: width 1.5s cubic-bezier(0.165, 0.84, 0.44, 1);
 }
 
 .menu-status {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 12px 20px;
-  font-size: 0.75rem;
-  font-weight: 600;
-  border-radius: 8px;
+  padding: 12px 28px;
+  font-size: 1rem;
+  font-weight: 700;
+  border-radius: 12px;
   border: none;
   cursor: pointer;
-  transition: all 0.3s ease;
-  text-transform: uppercase;
+  transition: background 0.2s, color 0.2s, box-shadow 0.2s;
+  margin-left: 12px;
+  background: linear-gradient(90deg, #a75d5d 0%, #d3756b 100%);
+  color: #fff;
+  box-shadow: 0 2px 8px #a75d5d22;
+  outline: none;
 }
 
 .menu-status.sufficient {
-  background-color: var(--success-color);
-  color: white;
-  box-shadow: 0 4px 8px rgba(76, 175, 80, 0.3);
+  background: linear-gradient(90deg, #d3756b 0%, #f0997d 100%);
+  color: #fff;
+  box-shadow: 0 2px 12px #d3756b33;
+  animation: pulse-redeem 1.2s infinite alternate;
 }
 
-.menu-status.sufficient:hover {
-  background-color: #388e3c;
-  box-shadow: 0 6px 12px rgba(56, 142, 60, 0.4);
-  transform: translateY(-2px);
-}
-
+.menu-status:disabled,
 .menu-status.insufficient {
-  background-color: var(--error-color);
-  color: white;
-  opacity: 0.7;
+  background: #ffe7d6;
+  color: #bdbdbd;
   cursor: not-allowed;
+  box-shadow: none;
+  animation: none;
 }
 
-.menu-status.insufficient:hover {
-  opacity: 0.8;
+.menu-status:not(:disabled):hover {
+  filter: brightness(1.05);
+  box-shadow: 0 4px 16px #d3756b33;
 }
 
-/* No menu items state */
-.no-menu-items {
-  text-align: center;
-  padding: 2rem 1rem;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
+@keyframes pulse-redeem {
+  from { box-shadow: 0 0 0 0 #f0997d44; }
+  to   { box-shadow: 0 0 12px 6px #d3756b33; }
 }
 
-.no-menu-items svg {
-  width: 40px;
-  height: 40px;
-  stroke: var(--text-light);
-  margin-bottom: 8px;
-}
-
-.no-menu-items p {
-  color: var(--text-secondary);
-  margin-bottom: 16px;
-}
-
-.retry-button {
-  background-color: var(--primary-color);
-  color: white;
-  border: none;
-  padding: 8px 16px;
-  border-radius: 6px;
-  font-size: 0.9rem;
-  cursor: pointer;
-  transition: background-color 0.2s;
-}
-
-.retry-button:hover {
-  background-color: var(--primary-dark);
-}
-
-/* Quick actions */
-.quick-actions {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 16px;
-  margin-bottom: 1.5rem;
-}
-
-.action-button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  padding: 14px;
-  border-radius: var(--border-radius);
-  border: none;
-  cursor: pointer;
-  font-weight: 500;
-  font-size: 0.95rem;
-  transition: transform 0.2s, box-shadow 0.2s;
-}
-
-.action-button:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-}
-
-.action-button.primary {
-  background-color: var(--primary-color);
-  color: white;
-}
-
-.action-button.primary:hover {
-  background-color: var(--primary-dark);
-}
-
-.action-button.secondary {
-  background-color: #f0f0f0;
-  color: var(--text-primary);
-}
-
-.action-button.secondary:hover {
-  background-color: #e8e8e8;
-}
-
-.action-button svg {
-  width: 20px;
-  height: 20px;
-  stroke: currentColor;
-}
-
-/* Responsive design */
-@media (min-width: 768px) {
-  :root {
-    --card-padding: 1.5rem;
-  }
-  
-  .main-content {
-    padding: 2rem;
-  }
-  
-  .menu-items-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-  
-  .quick-actions {
-    grid-template-columns: repeat(2, 1fr);
-  }
-  
-  .welcome-card {
-    padding: 2rem;
-  }
-}
-
+/* Responsive: ซ้อนเป็นแนวตั้งเมื่อจอเล็ก */
 @media (max-width: 768px) {
-  :root {
-    --card-padding: 1.25rem;
-  }
-
-  .user-navbar {
-    padding: 0.75rem 1rem;
-  }
-
-  .nav-profile-image,
-  .profile-placeholder {
-    width: 36px;
-    height: 36px;
-  }
-
-  .nav-display-name {
-    font-size: 0.9rem;
-  }
-
-  .nav-userpoint {
-    font-size: 0.75rem;
-  }
-
-  .menu-popup {
-    width: 280px;
-  }
-
-  .status-feedback {
-    max-width: 85%;
-  }
-}
-
-@media (max-width: 576px) {
-  :root {
-    --card-padding: 1rem;
-  }
-
-  .user-info {
-    gap: 8px;
-  }
-
-  .nav-profile-image,
-  .profile-placeholder {
-    width: 32px;
-    height: 32px;
-  }
-
-  .nav-display-name {
-    font-size: 0.85rem;
-  }
-
-  .nav-userpoint {
-    font-size: 0.7rem;
-  }
-
-  .menu-toggle-button {
-    padding: 4px;
-  }
-
-  .menu-popup {
-    width: 85%;
-    right: -85%;
-  }
-
-  .menu-items-grid {
+  .menu-item-card.horizontal {
     grid-template-columns: 1fr;
+    grid-template-rows: 160px auto;
+    border-radius: 20px;
   }
-  
-  .quick-actions {
-    grid-template-columns: 1fr;
-    gap: 12px;
+  .menu-image-showcase {
+    height: 160px;
+    min-height: 120px;
+    max-height: 200px;
   }
-
-  .welcome-profile-image, 
-  .welcome-profile-placeholder {
-    width: 70px;
-    height: 70px;
+  .menu-item-image-showcase {
+    border-radius: 20px 20px 0 0;
+    border-bottom-left-radius: 0;
+    border-top-left-radius: 20px;
+    border-top-right-radius: 20px;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-right: none;
+    border-bottom: 2px solid #ffc3a1;
   }
-
-  .welcome-card h2 {
-    font-size: 1.25rem;
-  }
-
-  .section-header h3 {
-    font-size: 1.1rem;
-  }
-  
-  .action-button {
-    padding: 12px;
-  }
-  
-  .status-feedback {
-    top: 70px;
+  .menu-item-detail.modern {
+    border-radius: 0 0 20px 20px;
+    padding: 1.2rem 1rem 1.2rem 1rem;
   }
 }
