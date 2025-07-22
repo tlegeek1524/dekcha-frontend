@@ -130,7 +130,7 @@ export default function Employeeindex() {
       
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
           {/* Welcome Card */}
           <div className="lg:col-span-1">
             <div className="bg-white rounded-xl shadow-lg p-6">
@@ -151,14 +151,7 @@ export default function Employeeindex() {
                 </div>
                 <div className="bg-gray-50 rounded-lg p-4">
                   <p className="text-sm text-gray-600 mb-1">รหัสพนักงาน</p>
-                  <p className="text-lg font-semibold text-gray-800">{empuser?.empid}</p>
-                </div>
-                <div className="bg-green-50 rounded-lg p-4">
-                  <p className="text-sm text-green-600 mb-1">สถานะ</p>
-                  <div className="flex items-center">
-                    <div className="w-3 h-3 bg-green-500 rounded-full mr-2"></div>
-                    <p className="text-lg font-semibold text-green-700">เข้าสู่ระบบแล้ว</p>
-                  </div>
+                  <p className="text-lg font-semibold text-gray-800 ">{empuser?.empid}</p>
                 </div>
               </div>
             </div>

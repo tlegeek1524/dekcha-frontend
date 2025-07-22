@@ -9,6 +9,7 @@ import Usermenu from './component/pages/usermenu';
 import Register from './component/auth/resgister';
 import Managemenu from './component/employeepage/managemenu';
 import ManagePoint from './component/employeepage/managePoint';
+import Mailbox from './component/pages/usermailbox';
 
 function App() {
   return (
@@ -21,6 +22,7 @@ function App() {
         <Route path="/auth/login" element={<Adminlogin />} />
         <Route path="/auth/register" element={<Register />} />
         <Route path="/login/menu" element={<Usermenu />} />
+        <Route path="/login/mailbox" element={<Mailbox />} />
         <Route path="/auth/employee/menu" element={<Managemenu />} />
         <Route path="/auth/employee/managepoint" element={<ManagePoint />} />
       </Routes>

@@ -2,7 +2,7 @@ import React, { useState , useEffect } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { Eye, EyeOff, Lock, User, AlertCircle , Coffee } from "lucide-react";
-
+import '../index.css'; // Ensure you have the correct path to your CSS file
 function AdminLogin() {
   const [user, setUser] = useState("");
   const [password, setPassword] = useState("");
@@ -11,6 +11,65 @@ function AdminLogin() {
   const [showPassword, setShowPassword] = useState(false);
   const API_URL = import.meta.env.VITE_API_URL;
   const navigate = useNavigate();
+
+  // Helper function to set cookie
+  const setCookie = (name, value, days = 7, secure = true, httpOnly = false) => {
+    let expires = "";
+    if (days) {
+      const date = new Date();
+      date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+      expires = "; expires=" + date.toUTCString();
+    }
+    
+    let cookieString = `${name}=${value || ""}${expires}; path=/`;
+    
+    if (secure) {
+      cookieString += "; Secure";
+    }
+    
+    if (httpOnly) {
+      cookieString += "; HttpOnly";
+    }
+    
+    // เพิ่ม SameSite สำหรับความปลอดภัย
+    cookieString += "; SameSite=Strict";
+    
+    document.cookie = cookieString;
+  };
+
+  // Helper function to get cookie
+  const getCookie = (name) => {
+    const nameEQ = name + "=";
+    const ca = document.cookie.split(';');
+    for (let i = 0; i < ca.length; i++) {
+      let c = ca[i];
+      while (c.charAt(0) === ' ') c = c.substring(1, c.length);
+      if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length, c.length);
+    }
+    return null;
+  };
+
+  // Helper function to delete cookie
+  const deleteCookie = (name) => {
+    document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+  };
+
+  // Helper function to clear both cookie and localStorage
+  const clearAuthData = () => {
+    deleteCookie("AuthToken");
+    deleteCookie("userData");
+    localStorage.removeItem("AuthToken");
+    localStorage.removeItem("userData");
+  };
+
+  // Helper function to get token from either cookie or localStorage
+  const getAuthToken = () => {
+    const cookieToken = getCookie("AuthToken");
+    const localToken = localStorage.getItem("AuthToken");
+    
+    // Return cookie token first, fallback to localStorage
+    return cookieToken || localToken;
+  };
 
     useEffect(() => {
     const link = document.createElement('link');
@@ -39,13 +98,18 @@ function AdminLogin() {
 
       // ตรวจสอบผลลัพธ์จาก API
       if (response.data.status === "OK") {
-        // เก็บ token และข้อมูลผู้ใช้ลงใน localStorage
-        localStorage.setItem("AuthToken", response.data.token);
+        // เก็บ token ใน Cookie และ localStorage ควบคู่กัน
+        setCookie("AuthToken", response.data.token, 1, true, false); // เก็บไว้ 7 วัน
+        localStorage.setItem("AuthToken", response.data.token); // เก็บใน localStorage ด้วย
         
-        // เก็บข้อมูลผู้ใช้เพิ่มเติม (ถ้ามี)
+        // เก็บข้อมูลผู้ใช้เพิ่มเติมใน Cookie และ localStorage (ถ้ามี)
         if (response.data.user) {
+          setCookie("userData", JSON.stringify(response.data.user), 7, true, false);
           localStorage.setItem("userData", JSON.stringify(response.data.user));
         }
+        
+        console.log("Token saved to cookie:", getCookie("AuthToken"));
+        console.log("Token saved to localStorage:", localStorage.getItem("AuthToken"));
         
         // ใช้ navigate สำหรับ redirect ไปยังหน้าถัดไป
         navigate("/auth/employee");

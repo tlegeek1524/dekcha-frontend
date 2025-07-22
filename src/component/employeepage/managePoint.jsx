@@ -8,28 +8,83 @@ const ManagePoint = () => {
   const [formData, setFormData] = useState({ customer_info: '', userpoint: '' });
   const [submitLoading, setSubmitLoading] = useState(false);
   const [errors, setErrors] = useState({});
-
-  const currentUser = {
-    id: "user123",
-    name: "พนักงาน Admin",
-    role: "admin"
-  };
+  const [currentUser, setCurrentUser] = useState(null);
 
   useEffect(() => {
-    const checkAuth = () => {
+    const checkAuth = async () => {
+      console.log('🔍 Starting auth check...');
+      
+      const authToken = getCookie('AuthToken');
       const pinToken = getCookie('pinToken');
-      if (!pinToken) {
+      
+      console.log('🍪 AuthToken:', authToken ? 'Found' : 'Not found');
+      console.log('🍪 PinToken:', pinToken ? 'Found' : 'Not found');
+      
+      // ตรวจสอบว่ามี AuthToken หรือไม่
+      if (!authToken || !pinToken) {
+        console.log('❌ Missing tokens, redirecting to login...');
+        // ลบ cookies ทั้งหมด
+        document.cookie = 'AuthToken=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/';
+        document.cookie = 'pinToken=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/';
         navigate('/auth/login');
         return;
       }
       
-      if (currentUser.role !== 'admin') {
-        alert('คุณไม่มีสิทธิเข้าถึงหน้านี้');
-        navigate('/');
-        return;
+      try {
+        console.log('📞 Calling getUserInfo with token...');
+        // ดึงข้อมูลผู้ใช้จาก Token
+        const userResponse = await getUserInfo(authToken);
+        console.log('👤 User info response:', userResponse);
+        
+        // ตรวจสอบ response structure
+        if (!userResponse || userResponse.status !== 'OK' || !userResponse.user) {
+          console.log('🚫 Invalid response structure or status not OK');
+          alert('ไม่สามารถตรวจสอบข้อมูลผู้ใช้ได้');
+          // ลบ cookies และ redirect
+          document.cookie = 'AuthToken=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/';
+          document.cookie = 'pinToken=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/';
+          navigate('/auth/login');
+          return;
+        }
+
+        const userData = userResponse.user;
+        console.log('👤 User data:', userData);
+        console.log('🔐 User role:', userData.role);
+        
+        // ตรวจสอบสิทธิ์ (สามารถปรับเป็น role อื่นได้ตามต้องการ)
+        const allowedRoles = ['admin', 'employee']; // เพิ่ม employee เข้าไปด้วย
+        if (!allowedRoles.includes(userData.role)) {
+          console.log('🚫 User role not allowed:', userData.role);
+          alert('คุณไม่มีสิทธิเข้าถึงหน้านี้');
+          // ลบ cookies และ redirect
+          document.cookie = 'AuthToken=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/';
+          document.cookie = 'pinToken=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/';
+          navigate('/auth/login');
+          return;
+        }
+        
+        console.log('✅ Auth successful, setting user data');
+        // ตั้งค่าข้อมูลผู้ใช้
+        const userInfo = {
+          id: userData.empid,
+          name: userData.name,
+          firstname: userData.firstname,
+          lastname: userData.lastname,
+          empid: userData.empid,
+          role: userData.role,
+          pincode: userData.pincode
+        };
+        
+        setCurrentUser(userInfo);
+        setLoading(false);
+        
+      } catch (error) {
+        console.error('❌ Auth error:', error);
+        // ลบ cookies เมื่อ token ไม่ถูกต้อง
+        document.cookie = 'AuthToken=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/';
+        document.cookie = 'pinToken=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/';
+        navigate('/auth/login');
       }
-      
-      setLoading(false);
     };
 
     checkAuth();
@@ -42,7 +97,49 @@ const ManagePoint = () => {
     return null;
   };
 
+  const getUserInfo = async (token) => {
+    try {
+      const API_URL = import.meta.env.VITE_API_URL;
+      console.log('🌐 API URL:', API_URL);
+      console.log('🔑 Using token:', token.substring(0, 10) + '...' + token.substring(token.length - 10));
+      
+      const response = await fetch(`${API_URL}/auth/verify-token`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      console.log('📡 Response status:', response.status);
+      console.log('📡 Response ok:', response.ok);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.log('❌ Error response:', errorText);
+        throw new Error(`Failed to get user info: ${response.status} ${errorText}`);
+      }
+
+      const userInfo = await response.json();
+      console.log('📄 User info received:', JSON.stringify(userInfo, null, 2));
+      
+      // ตรวจสอบว่า response มี structure ที่ถูกต้องหรือไม่
+      if (userInfo.status === 'OK' && userInfo.user) {
+        console.log('✅ Valid response structure');
+        return userInfo;
+      } else {
+        console.log('❌ Invalid response structure');
+        throw new Error('Invalid response structure');
+      }
+    } catch (error) {
+      console.error('💥 Error fetching user info:', error);
+      throw error;
+    }
+  };
+
   const handleLogout = () => {
+    // ลบ cookies ทั้งหมด
+    document.cookie = 'AuthToken=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/';
     document.cookie = 'pinToken=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/';
     navigate('/auth/login');
   };
@@ -51,19 +148,23 @@ const ManagePoint = () => {
     if (e) e.preventDefault();
     if (submitLoading) return;
     
+    console.log('🎯 Starting add points process...');
     setSubmitLoading(true);
     setErrors({});
 
     const pointNumber = Number(formData.userpoint);
+    console.log('📝 Form data:', { customer_info: formData.customer_info, userpoint: pointNumber });
 
     // Validation
     if (!formData.customer_info.trim()) {
+      console.log('❌ Validation failed: customer_info empty');
       setErrors({ customer_info: 'กรุณากรอกข้อมูลลูกค้า' });
       setSubmitLoading(false);
       return;
     }
 
     if (!formData.userpoint || pointNumber <= 0 || isNaN(pointNumber)) {
+      console.log('❌ Validation failed: invalid userpoint');
       setErrors({ userpoint: 'กรุณากรอกจำนวนแต้มที่ถูกต้อง' });
       setSubmitLoading(false);
       return;
@@ -73,36 +174,66 @@ const ManagePoint = () => {
       customer_info: formData.customer_info.trim(),
       userpoint: parseInt(pointNumber)
     };
+    console.log('📤 Request data:', JSON.stringify(requestData, null, 2));
 
     try {
+      const authToken = getCookie('AuthToken');
+      if (!authToken) {
+        console.log('❌ No auth token found');
+        alert('Session หมดอายุ กรุณาเข้าสู่ระบบใหม่');
+        navigate('/auth/login');
+        return;
+      }
+
       const API_URL = import.meta.env.VITE_API_URL;
+      console.log('🌐 Calling API:', `${API_URL}/points/add`);
+      console.log('🔑 Using token:', authToken.substring(0, 10) + '...' + authToken.substring(authToken.length - 10));
+      
       const response = await fetch(`${API_URL}/points/add`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${getCookie('pinToken')}`
+          'Authorization': `Bearer ${authToken}`
         },
         body: JSON.stringify(requestData)
       });
 
+      console.log('📡 Response status:', response.status);
+      console.log('📡 Response ok:', response.ok);
+
       const result = await response.json();
+      console.log('📄 Response data:', JSON.stringify(result, null, 2));
 
       if (response.ok) {
+        console.log('✅ Points added successfully');
         alert('เพิ่มแต้มสำเร็จ!');
         setFormData({ customer_info: '', userpoint: '' });
       } else {
+        console.log('❌ API returned error');
+        // หาก token หมดอายุหรือไม่ถูกต้อง
+        if (response.status === 401) {
+          console.log('🚫 Token expired or invalid (401)');
+          alert('Session หมดอายุ กรุณาเข้าสู่ระบบใหม่');
+          handleLogout();
+          return;
+        }
+
         if (result.errors) {
+          console.log('📝 Setting field errors:', result.errors);
           setErrors(result.errors);
         } else if (result.error) {
+          console.log('📝 Setting general error:', result.error);
           setErrors({ general: result.error });
         } else {
+          console.log('📝 Unknown error format');
           alert(result.message || 'เกิดข้อผิดพลาดในการเพิ่มแต้ม');
         }
       }
     } catch (error) {
-      console.error('Error adding points:', error);
+      console.error('💥 Network or other error:', error);
       alert('เกิดข้อผิดพลาดในการเชื่อมต่อ API');
     } finally {
+      console.log('🏁 Add points process completed');
       setSubmitLoading(false);
     }
   };
@@ -129,6 +260,11 @@ const ManagePoint = () => {
     );
   }
 
+  // ถ้าไม่มี currentUser ให้แสดง loading หรือ redirect
+  if (!currentUser) {
+    return null;
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -141,12 +277,16 @@ const ManagePoint = () => {
             </div>
             <div className="flex items-center space-x-4">
               <div className="text-right">
-                <p className="text-sm font-medium text-gray-900">{currentUser.name}</p>
-                <p className="text-xs text-gray-500">{currentUser.role}</p>
+                <p className="text-sm font-medium text-gray-900">
+                  {currentUser.firstname} {currentUser.lastname} ({currentUser.name})
+                </p>
+                <p className="text-xs text-gray-500">
+                  {currentUser.empid} • {currentUser.role}
+                </p>
               </div>
               <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
                 <span className="text-white text-sm font-medium">
-                  {currentUser.name.charAt(0)}
+                  {currentUser.firstname ? currentUser.firstname.charAt(0).toUpperCase() : currentUser.name.charAt(0).toUpperCase()}
                 </span>
               </div>
             </div>
@@ -235,16 +375,6 @@ const ManagePoint = () => {
                   'เพิ่มแต้ม'
                 )}
               </button>
-            </div>
-
-            <div className="mt-8 p-4 bg-gray-50 rounded-md">
-              <h3 className="text-sm font-medium text-gray-700 mb-2">ข้อมูล API</h3>
-              <p className="text-xs text-gray-600 mb-1">
-                <strong>Endpoint:</strong> POST {import.meta.env.VITE_API_URL}/points/add
-              </p>
-              <p className="text-xs text-gray-600">
-                <strong>Authorization:</strong> Bearer Token
-              </p>
             </div>
           </div>
         </div>

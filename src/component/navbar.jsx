@@ -31,10 +31,12 @@ const Navbar = ({ user, safeName }) => {
     const [menuOpen, setMenuOpen] = useState(false);
 
     useEffect(() => {
+        // โหลด Google Fonts สำหรับ Kanit และ Prompt
         const link = document.createElement('link');
-        link.href = 'https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=Prompt:wght@300;400;500;600;700&display=swap';
+        link.href = 'https://fonts.googleapis.com/css2?family=Kanit:wght@200;300;400;500;600;700;800&family=Prompt:wght@200;300;400;500;600;700;800&display=swap';
         link.rel = 'stylesheet';
         document.head.appendChild(link);
+        
         return () => {
             const existingLink = document.head.querySelector(`link[href="${link.href}"]`);
             if (existingLink) document.head.removeChild(existingLink);
@@ -120,11 +122,11 @@ const Navbar = ({ user, safeName }) => {
                         {item.icon}
                     </svg>
                 </div>
-                <span className={`text-sm font-medium font-kanit truncate ${
+                <span className={`text-sm font-medium truncate ${
                     isActive
                         ? 'text-[#f5f5f5] font-semibold'
                         : 'text-[#3e2723] group-hover:text-[#5d4037]'
-                }`}>
+                }`} style={{ fontFamily: 'Kanit, sans-serif' }}>
                     {item.label}
                 </span>
                 {isActive && <div className="w-2 h-2 bg-[#f5f5f5] rounded-full animate-pulse ml-auto flex-shrink-0"></div>}
@@ -133,7 +135,7 @@ const Navbar = ({ user, safeName }) => {
     };
 
     return (
-        <div className="relative font-prompt">
+        <div className="relative" style={{ fontFamily: 'Prompt, sans-serif' }}>
             <div className="bg-gradient-to-r from-[#f5f5f5] to-[#a1887f]/10 shadow-lg border-b border-[#8d6e63]/30">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex items-center justify-between h-16 sm:h-20">
@@ -152,7 +154,7 @@ const Navbar = ({ user, safeName }) => {
                                 <div className="absolute -top-0.5 -right-0.5 w-3 h-3 sm:w-4 sm:h-4 bg-green-400 rounded-full border-2 border-white shadow-sm"></div>
                             </div>
                             <div className="flex flex-col min-w-0 flex-1">
-                                <div className="text-sm sm:text-base font-medium text-[#3e2723] flex items-center font-kanit truncate">
+                                <div className="text-sm sm:text-base font-medium text-[#3e2723] flex items-center truncate" style={{ fontFamily: 'Kanit, sans-serif' }}>
                                     <span className="mr-1 sm:mr-2 flex-shrink-0">คุณ:</span>
                                     <span className="font-semibold text-[#5d4037] truncate">{safeName || 'ผู้ใช้'}</span>
                                 </div>
@@ -161,7 +163,7 @@ const Navbar = ({ user, safeName }) => {
                                         <svg className="w-3 h-3 sm:w-4 sm:h-4 text-[#5d4037] mr-1 sm:mr-1.5" fill="currentColor" viewBox="0 0 20 20">
                                             <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
                                         </svg>
-                                        <span className="text-[#3e2723] font-medium font-kanit whitespace-nowrap">
+                                        <span className="text-[#3e2723] font-medium whitespace-nowrap" style={{ fontFamily: 'Kanit, sans-serif' }}>
                                             แต้ม: <CounterAnimation value={user?.userpoint || 0} duration={1500} />
                                         </span>
                                     </div>
@@ -186,7 +188,7 @@ const Navbar = ({ user, safeName }) => {
                         <div className="mb-3 p-2 bg-gradient-to-r from-[#a1887f]/20 to-[#8d6e63]/20 rounded-lg border border-[#8d6e63]/30">
                             <div className="flex items-center space-x-2">
                                 <div className="w-2 h-2 bg-[#5d4037] rounded-full animate-pulse"></div>
-                                <span className="text-xs font-medium text-[#3e2723] font-kanit">
+                                <span className="text-xs font-medium text-[#3e2723]" style={{ fontFamily: 'Kanit, sans-serif' }}>
                                     หน้าปัจจุบัน: {menuItems.find(item => currentPath === item.path)?.label || 'ไม่พบหน้า'}
                                 </span>
                             </div>
@@ -201,7 +203,7 @@ const Navbar = ({ user, safeName }) => {
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                                     </svg>
                                 </div>
-                                <span className="text-sm font-medium text-red-700 font-kanit">ออกจากระบบ</span>
+                                <span className="text-sm font-medium text-red-700" style={{ fontFamily: 'Kanit, sans-serif' }}>ออกจากระบบ</span>
                             </button>
                         </div>
                     </div>

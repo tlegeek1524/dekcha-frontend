@@ -2,25 +2,22 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 
 // เพิ่ม Google Fonts - Kanit
 const FontLoader = () => {
-  useEffect(() => {
-    // เพิ่ม Google Fonts link ถ้ายังไม่มี
-    if (!document.querySelector('link[href*="fonts.googleapis.com/css2?family=Kanit"]')) {
-      const link = document.createElement('link');
-      link.href = 'https://fonts.googleapis.com/css2?family=Kanit:wght@200;300;400;500;600;700;800&display=swap';
-      link.rel = 'stylesheet';
-      document.head.appendChild(link);
-    }
-    
-    // เพิ่ม font-family ให้กับ body
-    document.body.style.fontFamily = '"Kanit", sans-serif';
-    
-    return () => {
-      // Cleanup
-      document.body.style.fontFamily = '';
-    };
-  }, []);
-  
-  return null;
+    useEffect(() => {
+        if (!document.querySelector('link[href*="fonts.googleapis.com/css2?family=Kanit"]')) {
+            const link = document.createElement('link');
+            link.href = 'https://fonts.googleapis.com/css2?family=Kanit:wght@200;300;400;500;600;700;800&display=swap';
+            link.rel = 'stylesheet';
+            document.head.appendChild(link);
+        }
+
+        document.body.style.fontFamily = '"Kanit", sans-serif';
+
+        return () => {
+            document.body.style.fontFamily = '';
+        };
+    }, []);
+
+    return null;
 };
 
 // Constants
@@ -175,7 +172,6 @@ const PinModal = ({ isOpen, onClose, onVerify, title }) => {
     const [attemptCount, setAttemptCount] = useState(0);
     const inputRefs = useRef([]);
 
-    // Reset state when modal opens
     useEffect(() => {
         if (isOpen) {
             setPin(Array(PIN_LENGTH).fill(''));
@@ -186,7 +182,6 @@ const PinModal = ({ isOpen, onClose, onVerify, title }) => {
             setUserInfo(null);
             setAttemptCount(0);
 
-            // Focus first input
             setTimeout(() => {
                 inputRefs.current[0]?.focus();
             }, 100);
@@ -207,12 +202,10 @@ const PinModal = ({ isOpen, onClose, onVerify, title }) => {
 
         if (error) setError('');
 
-        // Auto-focus next input
         if (numericValue && index < PIN_LENGTH - 1) {
             inputRefs.current[index + 1]?.focus();
         }
 
-        // Auto-verify when complete
         if (newPin.every(digit => digit !== '') && !isLoading) {
             setTimeout(() => {
                 handleVerifyPin(newPin.join(''));
@@ -253,27 +246,23 @@ const PinModal = ({ isOpen, onClose, onVerify, title }) => {
     }, []);
 
     const handleVerifyPin = async (pinValue) => {
-        // Check attempt limit
         if (attemptCount >= 3) {
-            setError('ป้อนรหัสผิดครบ 3 ครั้ง กรุณาลองใหม่อีกครั้งภายหลัง');
+            setError('ป้อนรหัสผิดครับ 3 ครั้ง กรุณาลองใหม่อีกครั้งภายหลัง');
             return;
         }
 
         setIsLoading(true);
 
         try {
-            // Verify token and get user info
             const user = await ApiService.verifyToken();
             setUserInfo(user);
 
-            // Verify PIN with parent component
             await onVerify(pinValue, user);
 
             setSuccess(true);
             setError('');
             setAttemptCount(0);
 
-            // Close modal after success
             setTimeout(() => {
                 setPin(Array(PIN_LENGTH).fill(''));
                 setSuccess(false);
@@ -312,12 +301,11 @@ const PinModal = ({ isOpen, onClose, onVerify, title }) => {
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 backdrop-blur-sm p-4" style={{ fontFamily: '"Kanit", sans-serif' }}>
+        <div className="fixed inset-0 bg-gray-400/10 bg-opacity-20 flex items-center justify-center z-50 backdrop-blur-sm p-4" style={{ fontFamily: '"Kanit", sans-serif' }}>
             <div
                 className={`bg-white rounded-2xl p-6 sm:p-8 w-full max-w-sm sm:max-w-md shadow-2xl transform transition-all duration-300 ${isOpen ? 'scale-100 opacity-100' : 'scale-95 opacity-0'
                     } ${shake ? 'animate-shake' : ''}`}
             >
-                {/* Header */}
                 <div className="text-center mb-6 sm:mb-8">
                     <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-3 sm:mb-4 shadow-lg">
                         <svg className="w-6 h-6 sm:w-8 sm:h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -338,25 +326,27 @@ const PinModal = ({ isOpen, onClose, onVerify, title }) => {
                     )}
                 </div>
 
-                {/* PIN Input */}
                 <div className="mb-6">
                     <div className="flex justify-center space-x-2 sm:space-x-3 mb-4">
                         {pin.map((digit, index) => (
                             <input
                                 key={index}
                                 ref={el => inputRefs.current[index] = el}
-                                type="text"
+                                type="tel"
+                                inputMode="numeric"
+                                pattern="[0-9]*"
                                 value={digit ? '•' : ''}
                                 onChange={(e) => handlePinChange(index, e.target.value)}
                                 onKeyDown={(e) => handleKeyDown(index, e)}
                                 onPaste={handlePaste}
+                                onFocus={(e) => e.target.select()}
                                 className={`w-12 h-12 sm:w-14 sm:h-14 text-center text-xl sm:text-2xl font-bold border-2 rounded-xl focus:outline-none transition-all duration-200 ${error
-                                        ? 'border-red-400 bg-red-50'
-                                        : success
-                                            ? 'border-green-400 bg-green-50'
-                                            : digit
-                                                ? 'border-blue-400 bg-blue-50'
-                                                : 'border-gray-300 bg-gray-50'
+                                    ? 'border-red-400 bg-red-50'
+                                    : success
+                                        ? 'border-green-400 bg-green-50'
+                                        : digit
+                                            ? 'border-blue-400 bg-blue-50'
+                                            : 'border-gray-300 bg-gray-50'
                                     } focus:border-blue-500 focus:bg-white focus:shadow-lg focus:scale-105`}
                                 maxLength="1"
                                 autoComplete="off"
@@ -366,7 +356,6 @@ const PinModal = ({ isOpen, onClose, onVerify, title }) => {
                         ))}
                     </div>
 
-                    {/* Clear PIN Button */}
                     <div className="flex justify-center mb-4">
                         <button
                             onClick={clearPin}
@@ -377,7 +366,6 @@ const PinModal = ({ isOpen, onClose, onVerify, title }) => {
                         </button>
                     </div>
 
-                    {/* Error Message */}
                     {error && (
                         <div className="text-center">
                             <p className="text-red-600 text-sm font-medium flex items-center justify-center">
@@ -389,7 +377,6 @@ const PinModal = ({ isOpen, onClose, onVerify, title }) => {
                         </div>
                     )}
 
-                    {/* Success Message */}
                     {success && (
                         <div className="text-center">
                             <p className="text-green-600 text-sm font-medium flex items-center justify-center">
@@ -402,7 +389,6 @@ const PinModal = ({ isOpen, onClose, onVerify, title }) => {
                     )}
                 </div>
 
-                {/* Loading Indicator */}
                 {isLoading && (
                     <div className="flex justify-center mb-6">
                         <div className="flex items-center space-x-2">
@@ -414,7 +400,6 @@ const PinModal = ({ isOpen, onClose, onVerify, title }) => {
                     </div>
                 )}
 
-                {/* Buttons */}
                 <div className="flex space-x-4">
                     <button
                         type="button"
@@ -451,7 +436,6 @@ const PinModal = ({ isOpen, onClose, onVerify, title }) => {
                     </button>
                 </div>
 
-                {/* Close Button */}
                 <button
                     onClick={onClose}
                     disabled={isLoading}
@@ -463,7 +447,6 @@ const PinModal = ({ isOpen, onClose, onVerify, title }) => {
                 </button>
             </div>
 
-            {/* Custom Shake Animation */}
             <style jsx>{`
         @keyframes shake {
           0%, 100% { transform: translateX(0); }
@@ -482,7 +465,6 @@ const AuthManager = {
             throw new Error('ไม่พบข้อมูลผู้ใช้');
         }
 
-        // Compare PIN directly (in production, use proper hash comparison)
         if (pin === user.pincode) {
             return { success: true, user };
         }
@@ -514,7 +496,7 @@ const AuthManager = {
 };
 
 // Main QuickActions Component
-const QuickActions = ({ customActions = [] }) => {
+const QuickActions = ({ customActions = [], className = "", showHeader = false, headerTitle = "เมนูหลัก" }) => {
     const [modalState, setModalState] = useState({
         isOpen: false,
         title: '',
@@ -537,6 +519,7 @@ const QuickActions = ({ customActions = [] }) => {
 
     const handleLogout = () => {
         document.cookie = 'pinToken=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/';
+        document.cookie = 'AuthToken=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/';
         localStorage.removeItem('AuthToken');
         window.location.href = '/auth/login';
     };
@@ -744,17 +727,14 @@ const QuickActions = ({ customActions = [] }) => {
         }
     ];
 
-    // เพิ่มตัวอย่างการใช้งานในคอมโพเนนต์
     const allActions = [...defaultActions, ...customActions];
 
     const handleActionClick = useCallback(async (actionItem) => {
-        // If action doesn't require PIN or PIN token exists, execute directly
         if (actionItem.requiresPin === false || AuthManager.checkPinToken()) {
             actionItem.action();
             return;
         }
 
-        // Show PIN modal
         setModalState({
             isOpen: true,
             title: `เข้าสู่ ${actionItem.title}`,
@@ -786,16 +766,21 @@ const QuickActions = ({ customActions = [] }) => {
     return (
         <>
             <FontLoader />
-            <div className="min-h-screen p-4 sm:p-6 lg:p-8" style={{ fontFamily: '"Kanit", sans-serif' }}>
-                <div className="max-w-7xl mx-auto">
+            <div className={`${className}`} style={{ fontFamily: '"Kanit", sans-serif' }}>
+                {showHeader && (
+                    <div className="mb-6">
+                        <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 text-center">
+                            {headerTitle}
+                        </h1>
+                    </div>
+                )}
 
-                    {/* Actions Grid - Clean button-only design */}
-                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4 sm:gap-6">
-                        {allActions.map((action) => (
-                            <button
-                                key={action.id}
-                                onClick={() => handleActionClick(action)}
-                                className={`
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4 sm:gap-6">
+                    {allActions.map((action) => (
+                        <button
+                            key={action.id}
+                            onClick={() => handleActionClick(action)}
+                            className={`
                 group relative rounded-3xl shadow-lg hover:shadow-2xl 
                 transition-all duration-300 transform hover:scale-105 active:scale-95
                 p-6 sm:p-8 text-center border-2 border-transparent
@@ -805,74 +790,58 @@ const QuickActions = ({ customActions = [] }) => {
                 flex flex-col items-center justify-center
                 backdrop-blur-sm
               `}
-                                title={action.title}
-                                style={{ fontFamily: '"Kanit", sans-serif' }}
-                            >
-                                {/* Icon */}
-                                <div className={`
+                            title={action.title}
+                            style={{ fontFamily: '"Kanit", sans-serif' }}
+                        >
+                            <div className={`
                 transition-transform duration-300
                 ${action.iconColor} group-hover:scale-110
                 drop-shadow-sm mb-2 sm:mb-3
               `}>
-                                    {action.icon}
-                                </div>
+                                {action.icon}
+                            </div>
 
-                                {/* Label */}
-                                <div className="text-center">
-                                    <span className={`
+                            <div className="text-center">
+                                <span className={`
                   text-xs sm:text-sm font-medium
                   ${action.iconColor} group-hover:text-opacity-90
                   leading-tight block
                 `}>
-                                        {action.title}
-                                    </span>
+                                    {action.title}
+                                </span>
+                            </div>
+
+                            {action.requiresPin && !AuthManager.checkPinToken() && (
+                                <div className="absolute inset-0 flex items-center justify-center z-20">
+                                    <svg className="w-16 h-16 text-zinc-700/70" fill="currentColor" viewBox="0 0 24 24">
+                                        <path d="M12 1a5 5 0 0 0-5 5v2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V10a2 2 0 0 0-2-2h-2V6a5 5 0 0 0-5-5zm-3 5a3 3 0 1 1 6 0v2H9V6zm3 8a2 2 0 1 1 0 4 2 2 0 0 1 0-4z" />
+                                    </svg>
                                 </div>
+                            )}
 
-                                {/* PIN Lock Indicator */}
-                                {action.requiresPin && !AuthManager.checkPinToken() && (
-                                    <>
-                                        {/* Background Overlay */}
+                            <div className="absolute inset-0 rounded-3xl bg-gradient-to-t from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
 
-                                        {/* Lock Icon in Center */}
-                                        <div className="absolute inset-0 flex items-center justify-center z-20">
-                                            <svg className="w-16 h-16 text-zinc-700/70" fill="currentColor" viewBox="0 0 24 24">
-                                                <path d="M12 1a5 5 0 0 0-5 5v2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V10a2 2 0 0 0-2-2h-2V6a5 5 0 0 0-5-5zm-3 5a3 3 0 1 1 6 0v2H9V6zm3 8a2 2 0 1 1 0 4 2 2 0 0 1 0-4z" />
-                                            </svg>
-                                        </div>
-                                    </>
-                                )}
-
-                                {/* Verified Indicator - ไม่แสดงอะไร */}
-                                {action.requiresPin && AuthManager.checkPinToken() && (
-                                    <></>
-                                )}
-
-                                {/* Hover Effect Overlay */}
-                                <div className="absolute inset-0 rounded-3xl bg-gradient-to-t from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
-
-                                {/* Ripple Effect */}
-                                <div className="absolute inset-0 rounded-3xl overflow-hidden">
-                                    <div className="absolute inset-0 bg-white/30 transform scale-0 group-active:scale-100 transition-transform duration-150 rounded-3xl" />
-                                </div>
-                            </button>
-                        ))}
-                    </div>
-
-                    <PinModal
-                        isOpen={modalState.isOpen}
-                        onClose={closeModal}
-                        onVerify={handlePinVerify}
-                        title={modalState.title}
-                    />
-
-                    {toast.show && (
-                        <Toast
-                            message={toast.message}
-                            type={toast.type}
-                            onClose={hideToast}
-                        />
-                    )}
+                            <div className="absolute inset-0 rounded-3xl overflow-hidden">
+                                <div className="absolute inset-0 bg-white/30 transform scale-0 group-active:scale-100 transition-transform duration-150 rounded-3xl" />
+                            </div>
+                        </button>
+                    ))}
                 </div>
+
+                <PinModal
+                    isOpen={modalState.isOpen}
+                    onClose={closeModal}
+                    onVerify={handlePinVerify}
+                    title={modalState.title}
+                />
+
+                {toast.show && (
+                    <Toast
+                        message={toast.message}
+                        type={toast.type}
+                        onClose={hideToast}
+                    />
+                )}
             </div>
         </>
     );

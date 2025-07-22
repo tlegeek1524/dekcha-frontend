@@ -20,6 +20,7 @@ const STATUS_CONFIG = {
 };
 
 const INITIAL_FORM_DATA = {
+  idmenu: '',
   name: '',
   point: '',
   category: '',
@@ -27,6 +28,35 @@ const INITIAL_FORM_DATA = {
   exp: '',
   status: '2',
   image: ''
+};
+
+// Helper function to generate unique menu ID
+const generateMenuId = () => {
+  const timestamp = Date.now();
+  const random = Math.floor(Math.random() * 1000);
+  return `menu_${timestamp}_${random}`;
+};
+
+// Helper function to format date for display
+const formatDateForDisplay = (dateString) => {
+  if (!dateString) return '';
+  try {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('th-TH');
+  } catch (error) {
+    return dateString;
+  }
+};
+
+// Helper function to format date for input
+const formatDateForInput = (dateString) => {
+  if (!dateString) return '';
+  try {
+    const date = new Date(dateString);
+    return date.toISOString().split('T')[0];
+  } catch (error) {
+    return '';
+  }
 };
 
 // Add fade-in animation styles
@@ -136,7 +166,10 @@ const MenuCard = React.memo(({ menu, onEdit, onDelete, index = 0, isLastUpdated 
 
       <div className="p-5">
         <div className="flex justify-between items-start mb-4">
-          <h3 className="text-lg font-bold text-gray-900 truncate pr-2">{menu.name}</h3>
+          <div className="flex-1 pr-2">
+            <h3 className="text-lg font-bold text-gray-900 truncate">{menu.name}</h3>
+            <p className="text-xs text-gray-500 mt-1">ID: {menu.idmenu}</p>
+          </div>
           <div className="flex items-center gap-1 bg-yellow-50 px-2 py-1 rounded-lg">
             <svg className="w-4 h-4 text-yellow-600" fill="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
@@ -165,7 +198,7 @@ const MenuCard = React.memo(({ menu, onEdit, onDelete, index = 0, isLastUpdated 
                   <svg className="w-3 h-3 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                   </svg>
-                  <span className="text-gray-600">วันที่เพิ่ม: {menu.date}</span>
+                  <span className="text-gray-600">วันที่เพิ่ม: {formatDateForDisplay(menu.date)}</span>
                 </div>
               )}
               {menu.exp && (
@@ -173,7 +206,7 @@ const MenuCard = React.memo(({ menu, onEdit, onDelete, index = 0, isLastUpdated 
                   <svg className="w-3 h-3 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
-                  <span className="text-gray-600">หมดอายุ: {menu.exp}</span>
+                  <span className="text-gray-600">หมดอายุ: {formatDateForDisplay(menu.exp)}</span>
                 </div>
               )}
             </div>
@@ -205,7 +238,7 @@ const MenuCard = React.memo(({ menu, onEdit, onDelete, index = 0, isLastUpdated 
   );
 });
 
-const Modal = React.memo(({ isOpen, onClose, isEditing, formData, onInputChange, onSubmit }) => {
+const Modal = React.memo(({ isOpen, onClose, isEditing, formData, onInputChange, onSubmit, formErrors }) => {
   const [imagePreview, setImagePreview] = useState(formData.image || '');
 
   useEffect(() => {
@@ -236,6 +269,33 @@ const Modal = React.memo(({ isOpen, onClose, isEditing, formData, onInputChange,
           </div>
 
           <div className="space-y-4">
+            {/* Menu ID Field - แสดงเฉพาะตอนแก้ไข */}
+            {isEditing ? (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">รหัสเมนู</label>
+                <input
+                  type="text"
+                  name="idmenu"
+                  value={formData.idmenu}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed"
+                  disabled
+                />
+                <p className="text-xs text-gray-500 mt-1">รหัสเมนูไม่สามารถแก้ไขได้</p>
+              </div>
+            ) : (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">รหัสเมนู</label>
+                <input
+                  type="text"
+                  value="(จะสร้างอัตโนมัติเมื่อบันทึก)"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 cursor-not-allowed text-gray-500"
+                  disabled
+                />
+                <p className="text-xs text-gray-500 mt-1">รหัสเมนูจะถูกสร้างอัตโนมัติ</p>
+              </div>
+            )}
+
+            {/* Image Preview */}
             {imagePreview && (
               <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700 mb-2">ตัวอย่างรูปภาพ</label>
@@ -256,8 +316,9 @@ const Modal = React.memo(({ isOpen, onClose, isEditing, formData, onInputChange,
               </div>
             )}
 
+            {/* Image URL */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">URL รูปภาพ</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">URL รูปภาพ (ไม่บังคับ)</label>
               <input
                 type="url"
                 name="image"
@@ -266,40 +327,64 @@ const Modal = React.memo(({ isOpen, onClose, isEditing, formData, onInputChange,
                 placeholder="https://example.com/image.jpg"
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
               />
-              <p className="text-xs text-gray-500 mt-1">ใส่ URL รูปภาพของเมนู (ไม่บังคับ)</p>
+              <p className="text-xs text-gray-500 mt-1">ใส่ URL รูปภาพของเมนู หากไม่ใส่จะใช้รูปเริ่มต้น</p>
             </div>
 
+            {/* Menu Name */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">ชื่อเมนู</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                ชื่อเมนู <span className="text-red-500">*</span>
+              </label>
               <input
                 type="text"
                 name="name"
                 value={formData.name}
                 onChange={onInputChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
+                  formErrors?.name ? 'border-red-500' : 'border-gray-300'
+                }`}
                 required
               />
+              {formErrors?.name && (
+                <p className="text-xs text-red-500 mt-1">{formErrors.name}</p>
+              )}
             </div>
 
+            {/* Points */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">คะแนน</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                คะแนน <span className="text-red-500">*</span>
+              </label>
               <input
                 type="number"
                 name="point"
                 value={formData.point}
                 onChange={onInputChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                min="1"
+                step="1"
+                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
+                  formErrors?.point ? 'border-red-500' : 'border-gray-300'
+                }`}
                 required
               />
+              {formErrors?.point && (
+                <p className="text-xs text-red-500 mt-1">{formErrors.point}</p>
+              )}
+              <p className="text-xs text-gray-500 mt-1">จำนวนคะแนนที่ใช้แลกเมนูนี้</p>
             </div>
 
+            {/* Category */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">หมวดหมู่</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                หมวดหมู่ <span className="text-red-500">*</span>
+              </label>
               <select
                 name="category"
                 value={formData.category}
                 onChange={onInputChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
+                  formErrors?.category ? 'border-red-500' : 'border-gray-300'
+                }`}
                 required
               >
                 <option value="">เลือกหมวดหมู่</option>
@@ -307,34 +392,58 @@ const Modal = React.memo(({ isOpen, onClose, isEditing, formData, onInputChange,
                   <option key={cat} value={cat}>{cat}</option>
                 ))}
               </select>
+              {formErrors?.category && (
+                <p className="text-xs text-red-500 mt-1">{formErrors.category}</p>
+              )}
             </div>
 
+            {/* Date fields */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">วันที่</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  วันที่เริ่มใช้ <span className="text-red-500">*</span>
+                </label>
                 <input
                   type="date"
                   name="date"
                   value={formData.date}
                   onChange={onInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
+                    formErrors?.date ? 'border-red-500' : 'border-gray-300'
+                  }`}
+                  required
                 />
+                {formErrors?.date && (
+                  <p className="text-xs text-red-500 mt-1">{formErrors.date}</p>
+                )}
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">วันหมดอายุ</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  วันหมดอายุ <span className="text-red-500">*</span>
+                </label>
                 <input
                   type="date"
                   name="exp"
                   value={formData.exp}
                   onChange={onInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  min={formData.date} // ป้องกันเลือกวันหมดอายุก่อนวันที่เริ่มใช้
+                  className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 ${
+                    formErrors?.exp ? 'border-red-500' : 'border-gray-300'
+                  }`}
+                  required
                 />
+                {formErrors?.exp && (
+                  <p className="text-xs text-red-500 mt-1">{formErrors.exp}</p>
+                )}
               </div>
             </div>
 
+            {/* Status */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">สถานะ</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                สถานะ <span className="text-red-500">*</span>
+              </label>
               <select
                 name="status"
                 value={formData.status}
@@ -348,22 +457,23 @@ const Modal = React.memo(({ isOpen, onClose, isEditing, formData, onInputChange,
                   </option>
                 ))}
               </select>
+              <p className="text-xs text-gray-500 mt-1">สถานะการใช้งานของเมนู</p>
             </div>
 
             <div className="flex space-x-3 mt-6">
               <button
                 type="button"
                 onClick={onClose}
-                className="flex-1 bg-gray-500 hover:bg-gray-600 text-white font-medium py-2 px-4 rounded-lg transition-colors"
+                className="flex-1 bg-gray-500 hover:bg-gray-600 text-white font-medium py-3 px-4 rounded-lg transition-colors"
               >
                 ยกเลิก
               </button>
               <button
                 type="button"
                 onClick={onSubmit}
-                className="flex-1 bg-amber-500 hover:bg-amber-600 text-white font-medium py-2 px-4 rounded-lg transition-colors"
+                className="flex-1 bg-amber-500 hover:bg-amber-600 text-white font-medium py-3 px-4 rounded-lg transition-colors"
               >
-                {isEditing ? 'อัพเดต' : 'บันทึก'}
+                {isEditing ? 'อัพเดตเมนู' : 'เพิ่มเมนูใหม่'}
               </button>
             </div>
           </div>
@@ -382,6 +492,7 @@ export default function MainMenuPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState(INITIAL_FORM_DATA);
   const [lastUpdatedId, setLastUpdatedId] = useState(null);
+  const [formErrors, setFormErrors] = useState({});
 
   const navigate = useNavigate();
 
@@ -404,10 +515,46 @@ export default function MainMenuPage() {
     navigate('/auth/login');
   };
 
+  // Form validation
+  const validateForm = useCallback((data) => {
+    const errors = {};
+
+    if (!data.name.trim()) {
+      errors.name = 'กรุณาใส่ชื่อเมนู';
+    }
+
+    if (!data.point.trim()) {
+      errors.point = 'กรุณาใส่คะแนน';
+    } else if (isNaN(data.point) || parseInt(data.point) <= 0) {
+      errors.point = 'คะแนนต้องเป็นตัวเลขมากกว่า 0';
+    }
+
+    if (!data.category.trim()) {
+      errors.category = 'กรุณาเลือกหมวดหมู่';
+    }
+
+    if (!data.date.trim()) {
+      errors.date = 'กรุณาเลือกวันที่เริ่มใช้';
+    }
+
+    if (!data.exp.trim()) {
+      errors.exp = 'กรุณาเลือกวันหมดอายุ';
+    } else if (data.date && data.exp && new Date(data.exp) <= new Date(data.date)) {
+      errors.exp = 'วันหมดอายุต้องหลังจากวันที่เริ่มใช้';
+    }
+
+    return errors;
+  }, []);
+
   const handleInputChange = useCallback((e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
-  }, []);
+    
+    // Clear error when user starts typing
+    if (formErrors[name]) {
+      setFormErrors(prev => ({ ...prev, [name]: '' }));
+    }
+  }, [formErrors]);
 
   const fetchMenus = useCallback(async () => {
     try {
@@ -430,49 +577,81 @@ export default function MainMenuPage() {
     setSelectedMenu(menu);
     setIsEditing(true);
     setFormData({
+      idmenu: menu.idmenu || '',
       name: menu.name || '',
-      point: menu.point || '',
+      point: String(menu.point) || '',
       category: menu.category || '',
-      date: menu.date || '',
-      exp: menu.exp || '',
+      date: formatDateForInput(menu.date) || '',
+      exp: formatDateForInput(menu.exp) || '',
       status: String(menu.status) || '2',
       image: menu.image || ''
     });
+    setFormErrors({});
     setShowModal(true);
   }, []);
 
   const openAddModal = useCallback(() => {
     setSelectedMenu(null);
     setIsEditing(false);
-    setFormData(INITIAL_FORM_DATA);
+    setFormData({
+      ...INITIAL_FORM_DATA,
+      date: new Date().toISOString().split('T')[0] // Set today as default date
+    });
+    setFormErrors({});
     setShowModal(true);
   }, []);
 
   const handleSubmit = useCallback(async () => {
     try {
+      // Validate form
+      const errors = validateForm(formData);
+      if (Object.keys(errors).length > 0) {
+        setFormErrors(errors);
+        return;
+      }
+
+      // Prepare data for API
+      const menuData = {
+        idmenu: isEditing ? selectedMenu.idmenu : generateMenuId(),
+        name: formData.name.trim(),
+        point: parseInt(formData.point),
+        category: formData.category.trim(),
+        date: new Date(formData.date).toISOString(),
+        exp: new Date(formData.exp).toISOString(),
+        status: parseInt(formData.status)
+      };
+
+      // Add image if provided
+      if (formData.image.trim()) {
+        menuData.image = formData.image.trim();
+      }
+
       const url = isEditing
         ? `${API_URL}/menu/update/${selectedMenu.idmenu}`
         : `${API_URL}/menu/`;
 
       const method = isEditing ? 'PUT' : 'POST';
 
+      console.log('Sending data to API:', menuData);
+
       const response = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...formData,
-          status: parseInt(formData.status)
-        }),
+        body: JSON.stringify(menuData),
       });
 
-      if (!response.ok) throw new Error('ไม่สามารถบันทึกข้อมูลได้');
+      if (!response.ok) {
+        const errorData = await response.text();
+        throw new Error(`API Error: ${response.status} - ${errorData}`);
+      }
 
       const result = await response.json();
+      console.log('API Response:', result);
 
       if (isEditing) {
         setLastUpdatedId(selectedMenu.idmenu);
       } else {
-        setLastUpdatedId(result.id || formData.name);
+        setLastUpdatedId(menuData.idmenu);
       }
 
       setTimeout(() => setLastUpdatedId(null), 5000);
@@ -484,14 +663,14 @@ export default function MainMenuPage() {
       console.error('Save Error:', err);
       alert('เกิดข้อผิดพลาด: ' + err.message);
     }
-  }, [formData, isEditing, selectedMenu, fetchMenus]);
+  }, [formData, isEditing, selectedMenu, fetchMenus, validateForm]);
 
   const sortedMenuItems = useMemo(() => {
     if (!lastUpdatedId) return menuItems;
 
     const sorted = [...menuItems].sort((a, b) => {
-      if (a.idmenu === lastUpdatedId || a.name === lastUpdatedId) return -1;
-      if (b.idmenu === lastUpdatedId || b.name === lastUpdatedId) return 1;
+      if (a.idmenu === lastUpdatedId) return -1;
+      if (b.idmenu === lastUpdatedId) return 1;
       return 0;
     });
 
@@ -506,7 +685,10 @@ export default function MainMenuPage() {
         method: 'DELETE',
       });
 
-      if (!response.ok) throw new Error('ไม่สามารถลบเมนูได้');
+      if (!response.ok) {
+        const errorData = await response.text();
+        throw new Error(`API Error: ${response.status} - ${errorData}`);
+      }
 
       alert('ลบเมนูสำเร็จ');
       await fetchMenus();
@@ -518,6 +700,7 @@ export default function MainMenuPage() {
 
   const closeModal = useCallback(() => {
     setShowModal(false);
+    setFormErrors({});
   }, []);
 
   useEffect(() => {
@@ -591,7 +774,7 @@ export default function MainMenuPage() {
                 onEdit={openEditModal}
                 onDelete={handleDelete}
                 index={index}
-                isLastUpdated={menu.idmenu === lastUpdatedId || menu.name === lastUpdatedId}
+                isLastUpdated={menu.idmenu === lastUpdatedId}
               />
             ))}
           </div>
@@ -606,6 +789,7 @@ export default function MainMenuPage() {
         formData={formData}
         onInputChange={handleInputChange}
         onSubmit={handleSubmit}
+        formErrors={formErrors}
       />
 
       {/* Footer */}
