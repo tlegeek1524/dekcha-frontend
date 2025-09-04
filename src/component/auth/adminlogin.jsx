@@ -1,356 +1,269 @@
-import React, { useState , useEffect } from "react";
+import React, { useState } from "react";
 import axios from "axios";
+import { Eye, EyeOff, AlertCircle } from 'lucide-react';
 import { useNavigate } from "react-router-dom";
-import { Eye, EyeOff, Lock, User, AlertCircle , Coffee } from "lucide-react";
-import '../index.css'; // Ensure you have the correct path to your CSS file
+import Cookies from 'js-cookie';
+import '../index.css';
+
 function AdminLogin() {
   const [user, setUser] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState({ user: false, password: false });
   const API_URL = import.meta.env.VITE_API_URL;
   const navigate = useNavigate();
 
-  // Helper function to set cookie
-  const setCookie = (name, value, days = 7, secure = true, httpOnly = false) => {
-    let expires = "";
-    if (days) {
-      const date = new Date();
-      date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
-      expires = "; expires=" + date.toUTCString();
-    }
-    
-    let cookieString = `${name}=${value || ""}${expires}; path=/`;
-    
-    if (secure) {
-      cookieString += "; Secure";
-    }
-    
-    if (httpOnly) {
-      cookieString += "; HttpOnly";
-    }
-    
-    // เพิ่ม SameSite สำหรับความปลอดภัย
-    cookieString += "; SameSite=Strict";
-    
-    document.cookie = cookieString;
-  };
-
-  // Helper function to get cookie
-  const getCookie = (name) => {
-    const nameEQ = name + "=";
-    const ca = document.cookie.split(';');
-    for (let i = 0; i < ca.length; i++) {
-      let c = ca[i];
-      while (c.charAt(0) === ' ') c = c.substring(1, c.length);
-      if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length, c.length);
-    }
-    return null;
-  };
-
-  // Helper function to delete cookie
-  const deleteCookie = (name) => {
-    document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
-  };
-
-  // Helper function to clear both cookie and localStorage
-  const clearAuthData = () => {
-    deleteCookie("AuthToken");
-    deleteCookie("userData");
-    localStorage.removeItem("AuthToken");
-    localStorage.removeItem("userData");
-  };
-
-  // Helper function to get token from either cookie or localStorage
-  const getAuthToken = () => {
-    const cookieToken = getCookie("AuthToken");
-    const localToken = localStorage.getItem("AuthToken");
-    
-    // Return cookie token first, fallback to localStorage
-    return cookieToken || localToken;
-  };
-
-    useEffect(() => {
-    const link = document.createElement('link');
-    link.href = 'https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=Prompt:wght@300;400;500;600;700&display=swap';
-    link.rel = 'stylesheet';
-    document.head.appendChild(link);
-    
-    return () => {
-      document.head.removeChild(link);
-    };
-  }, []);
-
+  // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+    setFieldErrors({ user: false, password: false });
+
+    // Simple validation - check if fields are empty
+    let hasError = false;
+    const errors = { user: false, password: false };
+
+    if (!user.trim()) {
+      errors.user = true;
+      hasError = true;
+    }
+
+    if (!password) {
+      errors.password = true;
+      hasError = true;
+    }
+
+    if (hasError) {
+      setFieldErrors(errors);
+      setError("กรุณากรอกข้อมูลให้ครบถ้วน");
+      return;
+    }
+
     setLoading(true);
 
     try {
-      // ส่งคำขอล็อกอินไปที่ API
-      const response = await axios.post(`${API_URL}/auth/login`, {
-        empid: user,
+      // Determine whether user input is empid or phone_emp
+      const requestData = {
         password_emp: password,
-      });
+      };
 
-      console.log(response.data);
-
-      // ตรวจสอบผลลัพธ์จาก API
-      if (response.data.status === "OK") {
-        // เก็บ token ใน Cookie และ localStorage ควบคู่กัน
-        setCookie("AuthToken", response.data.token, 1, true, false); // เก็บไว้ 7 วัน
-        localStorage.setItem("AuthToken", response.data.token); // เก็บใน localStorage ด้วย
-        
-        // เก็บข้อมูลผู้ใช้เพิ่มเติมใน Cookie และ localStorage (ถ้ามี)
-        if (response.data.user) {
-          setCookie("userData", JSON.stringify(response.data.user), 7, true, false);
-          localStorage.setItem("userData", JSON.stringify(response.data.user));
-        }
-        
-        console.log("Token saved to cookie:", getCookie("AuthToken"));
-        console.log("Token saved to localStorage:", localStorage.getItem("AuthToken"));
-        
-        // ใช้ navigate สำหรับ redirect ไปยังหน้าถัดไป
-        navigate("/auth/employee");
+      // Check if the user input is a phone number or empid
+      if (/^\d{10}$/.test(user)) { // Regular expression to check if it's a phone number (10 digits)
+        requestData.phone_emp = user;
       } else {
-        setError(response.data.message || "Login failed");
+        requestData.empid = user;
       }
 
-    } catch (err) {
-      console.error("Login error:", err);
-      
-      // จัดการ error ที่ละเอียดมากขึ้น
-      if (err.response) {
-        // เซิร์ฟเวอร์ตอบกลับด้วย status code ที่ไม่ใช่ 2xx
-        const statusCode = err.response.status;
-        
-        if (statusCode === 401) {
-          setError("Invalid username or password");
-        } else if (statusCode === 403) {
-          setError("Access denied");
-        } else if (statusCode === 500) {
-          setError("Server error. Please try again later.");
-        } else {
-          setError(`Server error: ${statusCode}`);
-        }
-      } else if (err.request) {
-        // คำขอถูกส่งแต่ไม่ได้รับการตอบกลับ
-        setError("Network error. Please check your connection.");
+      const response = await axios.post(`${API_URL}/auth/login`, requestData);
+
+      if (response.data.status === "OK") {
+        // Set token in localStorage
+        localStorage.setItem("AuthToken", response.data.token);
+        localStorage.setItem("userData", JSON.stringify(response.data.empuser));
+
+        // Set token in cookie with 12 hour expiry
+        Cookies.set('AuthToken', response.data.token, {
+          expires: 0.5, // 0.5 days = 12 hours
+          secure: true, // Use secure in production (HTTPS)
+          sameSite: 'strict', // CSRF protection
+        });
+
+        navigate("/auth/employee");
       } else {
-        // เกิดข้อผิดพลาดอื่นๆ
-        setError("An unexpected error occurred.");
+        setError(response.data.message || "รหัสพนักงานหรือรหัสผ่านไม่ถูกต้อง");
+      }
+    } catch (err) {
+      if (err.response && err.response.status === 401) {
+        setError("รหัสพนักงานหรือรหัสผ่านไม่ถูกต้อง");
+      } else if (err.response && err.response.status === 404) {
+        setError("ไม่พบข้อมูลพนักงาน");
+      } else if (err.response && err.response.status === 500) {
+        setError("เกิดข้อผิดพลาดจากเซิร์ฟเวอร์ กรุณาลองใหม่อีกครั้ง");
+      } else if (!err.response) {
+        setError("ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้");
+      } else {
+        setError("เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง");
       }
     } finally {
       setLoading(false);
     }
   };
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-amber-50 to-orange-50 flex items-center justify-center p-4 sm:p-6 lg:p-8">
-      <div className="w-full max-w-md sm:max-w-lg">
-        {/* Logo/Brand Section */}
-        <div className="text-center mb-8 sm:mb-10">
-          <div className="inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 rounded-3xl mb-4 sm:mb-6 shadow-lg transform hover:scale-105 transition-transform duration-300"
-               style={{ backgroundColor: '#8d6e63' }}>
-            <Coffee className="w-8 h-8 sm:w-10 sm:h-10 text-white" />
-          </div>
-          <h1 className="text-3xl sm:text-4xl font-bold mb-2 sm:mb-3" 
-              style={{ 
-                color: '#3e2723',
-                fontFamily: 'Kanit, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-                fontWeight: '700'
-              }}>
-            เข้าสู่ระบบ
-          </h1>
-          <p className="text-base sm:text-lg font-medium" 
-             style={{ 
-               color: '#5d4037',
-               fontFamily: 'Prompt, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
-             }}>
-            สำหรับผู้ดูแลระบบ
-          </p>
-        </div>
 
-        {/* Login Form */}
-        <div className="bg-white rounded-3xl shadow-2xl border-2 p-6 sm:p-8 lg:p-10 transform hover:shadow-3xl transition-shadow duration-300"
-             style={{ borderColor: '#a1887f' }}>
-          <div className="space-y-6 sm:space-y-8">
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter") {
+      handleSubmit(e);
+    }
+  };
+
+  // Clear field error when user starts typing
+  const handleUserChange = (value) => {
+    setUser(value);
+    if (fieldErrors.user) {
+      setFieldErrors(prev => ({ ...prev, user: false }));
+    }
+    if (error) setError("");
+  };
+
+  const handlePasswordChange = (value) => {
+    setPassword(value);
+    if (fieldErrors.password) {
+      setFieldErrors(prev => ({ ...prev, password: false }));
+    }
+    if (error) setError("");
+  };
+
+  return (
+    <>
+      {/* Google Fonts */}
+      <link rel="preconnect" href="https://fonts.googleapis.com" />
+      <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="true" />
+      <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600&display=swap" rel="stylesheet" />
+
+      <style jsx>{`
+        @keyframes shake {
+          0%, 100% { transform: translateX(0); }
+          10%, 30%, 50%, 70%, 90% { transform: translateX(-2px); }
+          20%, 40%, 60%, 80% { transform: translateX(2px); }
+        }
+        
+        .shake-animation {
+          animation: shake 0.5s ease-in-out;
+        }
+        
+        @keyframes fadeIn {
+          from { 
+            opacity: 0;
+            transform: translateY(-5px);
+          }
+          to { 
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        
+        .fade-in {
+          animation: fadeIn 0.3s ease-out forwards;
+        }
+      `}</style>
+
+      <div className="min-h-screen w-full bg-gray-50 flex items-center justify-center p-4" style={{ fontFamily: "'IBM Plex Sans Thai', sans-serif" }}>
+        <div className="w-full max-w-sm">
+          {/* Logo/Title Section */}
+          <div className="text-center mb-8">
+            <div className="w-24 h-24 mx-auto mb-4 flex items-center justify-center">
+              <img
+                src="https://mhpetiaaadwsvrtbkmue.supabase.co/storage/v1/object/public/menu-images//dekcha_logo-01.png"
+                alt="Dekcha Logo"
+                className="w-full h-full object-contain"
+              />
+            </div>
+            <h1 className="text-2xl font-medium text-gray-900 tracking-tight">ยินดีต้อนรับ</h1>
+            <p className="text-sm text-gray-500 mt-1 font-light">เข้าสู่ระบบเพื่อเริ่มใช้งาน</p>
+          </div>
+
+          {/* Login Form */}
+          <form onSubmit={handleSubmit} className="space-y-6">
             {/* Error Message */}
             {error && (
-              <div className="bg-red-50 border-2 border-red-200 rounded-2xl p-4 sm:p-5 flex items-center gap-3 sm:gap-4 animate-pulse">
-                <AlertCircle className="w-5 h-5 sm:w-6 sm:h-6 text-red-500 flex-shrink-0" />
-                <p className="text-red-700 text-sm sm:text-base font-medium"
-                   style={{ fontFamily: 'Prompt, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>
-                  {error}
-                </p>
+              <div className={`bg-red-50 border border-red-200 text-red-600 text-sm p-3 rounded-lg flex items-center gap-2 fade-in ${error ? 'shake-animation' : ''}`}>
+                <AlertCircle size={16} className="flex-shrink-0" />
+                <span className="font-light">{error}</span>
               </div>
             )}
 
             {/* Username Field */}
-            <div className="space-y-2 sm:space-y-3">
-              <label className="text-sm sm:text-base font-semibold block ml-1"
-                     style={{ 
-                       color: '#3e2723',
-                       fontFamily: 'Kanit, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
-                     }}>
-                ชื่อผู้ใช้
-              </label>
-              <div className="relative group">
-                <div className="absolute left-4 top-1/2 transform -translate-y-1/2 z-10 transition-all duration-300 group-hover:scale-110">
-                  <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center transition-all duration-300"
-                       style={{ backgroundColor: '#fff8e1' }}>
-                    <User className="w-4 h-4 sm:w-5 sm:h-5" style={{ color: '#8d6e63' }} />
-                  </div>
-                </div>
-                <input
-                  type="text"
-                  value={user}
-                  onChange={(e) => setUser(e.target.value)}
-                  className="w-full pl-14 sm:pl-16 pr-4 sm:pr-6 py-4 sm:py-5 border-2 rounded-2xl focus:outline-none focus:ring-4 focus:border-transparent transition-all duration-300 text-base sm:text-lg font-medium placeholder:font-normal backdrop-blur-sm shadow-lg hover:shadow-xl group-hover:shadow-2xl"
-                  style={{ 
-                    backgroundColor: '#fff8e1',
-                    borderColor: '#a1887f',
-                    color: '#3e2723',
-                    fontFamily: 'Prompt, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-                    boxShadow: '0 4px 20px rgba(141, 110, 99, 0.15)'
-                  }}
-                  onFocus={(e) => {
-                    e.target.style.backgroundColor = '#f5f5f5';
-                    e.target.style.transform = 'translateY(-2px)';
-                    e.target.style.boxShadow = '0 8px 30px rgba(141, 110, 99, 0.25)';
-                  }}
-                  onBlur={(e) => {
-                    e.target.style.backgroundColor = '#fff8e1';
-                    e.target.style.transform = 'translateY(0)';
-                    e.target.style.boxShadow = '0 4px 20px rgba(141, 110, 99, 0.15)';
-                  }}
-                  placeholder="กรอกชื่อผู้ใช้"
-                  required
-                />
-                <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-transparent via-white to-transparent opacity-0 group-hover:opacity-20 transition-opacity duration-300 pointer-events-none"></div>
-              </div>
+            <div className="space-y-2">
+              <label className="text-sm text-gray-700 font-medium">รหัสพนักงาน หรือ เบอร์โทรศัพท์</label>
+              <input
+                type="text"
+                placeholder="เช่น EMP001 หรือ 0891234567"
+                value={user}
+                onChange={(e) => handleUserChange(e.target.value)}
+                onKeyDown={handleKeyDown}
+                className={`w-full px-4 py-3 bg-white border rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none transition-all duration-200 font-light ${fieldErrors.user
+                  ? 'border-red-300 focus:border-red-500 focus:ring-2 focus:ring-red-100'
+                  : 'border-gray-200 focus:border-gray-900 focus:ring-2 focus:ring-gray-100'
+                  }`}
+              />
+              {fieldErrors.user && (
+                <p className="text-xs text-red-500 font-light fade-in">กรุณากรอกรหัสพนักงาน หรือ เบอร์โทรศัพท์</p>
+              )}
             </div>
 
             {/* Password Field */}
-            <div className="space-y-2 sm:space-y-3">
-              <label className="text-sm sm:text-base font-semibold block ml-1"
-                     style={{ 
-                       color: '#3e2723',
-                       fontFamily: 'Kanit, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
-                     }}>
-                รหัสผ่าน
-              </label>
-              <div className="relative group">
-                <div className="absolute left-4 top-1/2 transform -translate-y-1/2 z-10 transition-all duration-300 group-hover:scale-110">
-                  <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center transition-all duration-300"
-                       style={{ backgroundColor: '#fff8e1' }}>
-                    <Lock className="w-4 h-4 sm:w-5 sm:h-5" style={{ color: '#8d6e63' }} />
-                  </div>
-                </div>
+            <div className="space-y-2">
+              <label className="text-sm text-gray-700 font-medium">รหัสผ่าน</label>
+              <div className="relative">
                 <input
                   type={showPassword ? "text" : "password"}
+                  placeholder="••••••••"
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-14 sm:pl-16 pr-14 sm:pr-16 py-4 sm:py-5 border-2 rounded-2xl focus:outline-none focus:ring-4 focus:border-transparent transition-all duration-300 text-base sm:text-lg font-medium placeholder:font-normal backdrop-blur-sm shadow-lg hover:shadow-xl group-hover:shadow-2xl"
-                  style={{ 
-                    backgroundColor: '#fff8e1',
-                    borderColor: '#a1887f',
-                    color: '#3e2723',
-                    fontFamily: 'Prompt, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-                    boxShadow: '0 4px 20px rgba(141, 110, 99, 0.15)'
-                  }}
-                  onFocus={(e) => {
-                    e.target.style.backgroundColor = '#f5f5f5';
-                    e.target.style.transform = 'translateY(-2px)';
-                    e.target.style.boxShadow = '0 8px 30px rgba(141, 110, 99, 0.25)';
-                  }}
-                  onBlur={(e) => {
-                    e.target.style.backgroundColor = '#fff8e1';
-                    e.target.style.transform = 'translateY(0)';
-                    e.target.style.boxShadow = '0 4px 20px rgba(141, 110, 99, 0.15)';
-                  }}
-                  placeholder="กรอกรหัสผ่าน"
+                  onChange={(e) => handlePasswordChange(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  className={`w-full px-4 py-3 bg-white border rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none transition-all duration-200 pr-12 font-light ${fieldErrors.password
+                    ? 'border-red-300 focus:border-red-500 focus:ring-2 focus:ring-red-100'
+                    : 'border-gray-200 focus:border-gray-900 focus:ring-2 focus:ring-gray-100'
+                    }`}
                 />
                 <button
                   type="button"
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 transform -translate-y-1/2 transition-all duration-300 hover:scale-110 active:scale-95 p-2 rounded-full hover:bg-white hover:bg-opacity-50"
-                  style={{ color: '#8d6e63' }}
                 >
-                  <div className="w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center">
-                    {showPassword ? <EyeOff className="w-4 h-4 sm:w-5 sm:h-5" /> : <Eye className="w-4 h-4 sm:w-5 sm:h-5" />}
-                  </div>
+                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                 </button>
-                <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-transparent via-white to-transparent opacity-0 group-hover:opacity-20 transition-opacity duration-300 pointer-events-none"></div>
               </div>
+              {fieldErrors.password && (
+                <p className="text-xs text-red-500 font-light fade-in">กรุณากรอกรหัสผ่าน</p>
+              )}
             </div>
 
             {/* Submit Button */}
             <button
-              onClick={handleSubmit}
+              type="submit"
+              className="w-full py-3 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-all duration-200 font-normal disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-[1.02] active:scale-[0.98]"
               disabled={loading}
-              className="w-full py-3 sm:py-4 px-6 sm:px-8 rounded-2xl font-bold text-base sm:text-lg text-white focus:outline-none focus:ring-4 focus:ring-offset-2 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 sm:gap-4 shadow-lg hover:shadow-xl transform hover:scale-105 active:scale-95"
-              style={{ 
-                backgroundColor: '#8d6e63',
-                fontFamily: 'Kanit, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
-              }}
-              onMouseOver={(e) => e.target.style.backgroundColor = '#5d4037'}
-              onMouseOut={(e) => e.target.style.backgroundColor = '#8d6e63'}
             >
               {loading ? (
-                <>
-                  <div className="w-5 h-5 sm:w-6 sm:h-6 border-2 sm:border-3 border-white border-t-transparent rounded-full animate-spin"></div>
+                <span className="flex items-center justify-center gap-2">
+                  <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                  </svg>
                   กำลังเข้าสู่ระบบ...
-                </>
-              ) : (
-                <>
-                  <Coffee className="w-5 h-5 sm:w-6 sm:h-6" />
-                  เข้าสู่ระบบ
-                </>
-              )}
+                </span>
+              ) : "เข้าสู่ระบบ"}
             </button>
-          </div>
-        </div>
 
-        {/* Footer */}
-        <div className="text-center mt-6 sm:mt-8">
-          <p className="text-sm sm:text-base font-medium"
-             style={{ 
-               color: '#5d4037',
-               fontFamily: 'Prompt, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
-             }}>
-            เข้าถึงได้เฉพาะผู้ดูแลระบบเท่านั้น
-          </p>
-        </div>
-        
-        {/* Demo Info */}
-        <div className="mt-4 sm:mt-6 p-4 sm:p-6 rounded-2xl border-2 shadow-lg"
-             style={{ 
-               backgroundColor: '#fff8e1',
-               borderColor: '#a1887f'
-             }}>
-          <div className="flex items-center justify-center gap-2 sm:gap-3 mb-2">
-            <Coffee className="w-5 h-5 sm:w-6 sm:h-6" style={{ color: '#8d6e63' }} />
-            <span className="text-sm sm:text-base font-bold"
-                  style={{ 
-                    color: '#3e2723',
-                    fontFamily: 'Kanit, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
-                  }}>
-              ตัวอย่างการใช้งาน
-            </span>
-          </div>
-          <p className="text-sm sm:text-base text-center font-medium"
-             style={{ 
-               color: '#5d4037',
-               fontFamily: 'Prompt, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
-             }}>
-            ชื่อผู้ใช้: <span className="font-bold text-amber-800">"admin"</span><br />
-            รหัสผ่าน: <span className="font-bold text-amber-800">"password"</span>
+            {/* Role Toggle */}
+            <div className="flex items-center justify-center gap-4 pt-4 border-t border-gray-100">
+              <button
+                type="button"
+                className="text-sm text-gray-900 font-medium"
+              >
+                ผู้ดูแลระบบ
+              </button>
+              <span className="text-gray-300">|</span>
+              <button
+                type="button"
+                className="text-sm text-gray-500 hover:text-gray-900 transition-colors font-light"
+              >
+                พนักงาน
+              </button>
+            </div>
+          </form>
+
+
+          {/* Footer */}
+          <p className="text-center text-xs text-gray-400 mt-8 font-light">
+            © 2025 Company Name. All rights reserved.
           </p>
         </div>
       </div>
-    </div>
+    </>
   );
 }
 

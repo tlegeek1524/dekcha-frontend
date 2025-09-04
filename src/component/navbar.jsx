@@ -36,7 +36,7 @@ const Navbar = ({ user, safeName }) => {
         link.href = 'https://fonts.googleapis.com/css2?family=Kanit:wght@200;300;400;500;600;700;800&family=Prompt:wght@200;300;400;500;600;700;800&display=swap';
         link.rel = 'stylesheet';
         document.head.appendChild(link);
-        
+
         return () => {
             const existingLink = document.head.querySelector(`link[href="${link.href}"]`);
             if (existingLink) document.head.removeChild(existingLink);
@@ -63,6 +63,15 @@ const Navbar = ({ user, safeName }) => {
 
     const menuItems = [
         {
+            id: 'home',
+            path: '/login/userlogin',
+            label: 'หน้าหลัก',
+            icon: (
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+            ),
+            isImportant: false
+        },
+        {
             id: 'profile',
             path: '/login/profile',
             label: 'โปรไฟล์',
@@ -81,18 +90,9 @@ const Navbar = ({ user, safeName }) => {
             isImportant: true
         },
         {
-            id: 'home',
-            path: '/login/userlogin',
-            label: 'หน้าหลัก',
-            icon: (
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-            ),
-            isImportant: false
-        },
-        {
             id: 'menu',
             path: '/login/menu',
-            label: 'เมนู',
+            label: 'แลกสิทธิ์',
             icon: (
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
             ),
@@ -107,26 +107,23 @@ const Navbar = ({ user, safeName }) => {
             <button
                 key={item.id}
                 onClick={() => handleNavigation(item.path)}
-                className={`flex items-center space-x-2 p-2 rounded-lg transition-all duration-200 group w-full text-left ${
-                    isActive
+                className={`flex items-center space-x-2 p-2 rounded-lg transition-all duration-200 group w-full text-left ${isActive
                         ? 'bg-gradient-to-r from-[#a1887f] to-[#8d6e63] border border-[#5d4037] shadow-sm'
                         : 'hover:bg-gradient-to-r hover:from-[#a1887f]/20 hover:to-[#8d6e63]/20 border border-transparent'
-                }`}
+                    }`}
             >
-                <div className={`p-1.5 rounded-full flex-shrink-0 transition-all duration-200 ${
-                    isActive
+                <div className={`p-1.5 rounded-full flex-shrink-0 transition-all duration-200 ${isActive
                         ? 'bg-gradient-to-br from-[#5d4037] to-[#3e2723]'
                         : 'bg-gradient-to-br from-[#a1887f] to-[#8d6e63] group-hover:from-[#5d4037] group-hover:to-[#3e2723]'
-                }`}>
+                    }`}>
                     <svg className={`w-3.5 h-3.5 ${isActive ? 'text-[#f5f5f5]' : 'text-[#3e2723] group-hover:text-[#f5f5f5]'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         {item.icon}
                     </svg>
                 </div>
-                <span className={`text-sm font-medium truncate ${
-                    isActive
+                <span className={`text-sm font-medium truncate ${isActive
                         ? 'text-[#f5f5f5] font-semibold'
                         : 'text-[#3e2723] group-hover:text-[#5d4037]'
-                }`} style={{ fontFamily: 'Kanit, sans-serif' }}>
+                    }`} style={{ fontFamily: 'Kanit, sans-serif' }}>
                     {item.label}
                 </span>
                 {isActive && <div className="w-2 h-2 bg-[#f5f5f5] rounded-full animate-pulse ml-auto flex-shrink-0"></div>}

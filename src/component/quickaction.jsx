@@ -24,6 +24,9 @@ const FontLoader = () => {
 const PIN_LENGTH = 4;
 const PIN_TOKEN_EXPIRY_HOURS = 12;
 const API_TIMEOUT = 10000;
+const ROLE_CACHE_KEY = 'userRole';
+const ROLE_CACHE_EXPIRY_KEY = 'userRoleExpiry';
+const ROLE_CACHE_DURATION = 5 * 60 * 1000; // 5 นาที
 
 // Cookie Management
 const CookieManager = {
@@ -41,6 +44,93 @@ const CookieManager = {
 
     remove: (name) => {
         document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;secure;samesite=strict`;
+    }
+};
+
+// Cache Management สำหรับ Role
+const CacheManager = {
+    set: (key, value, duration = ROLE_CACHE_DURATION) => {
+        const expiryTime = Date.now() + duration;
+        const cacheData = {
+            value,
+            expiry: expiryTime
+        };
+        sessionStorage.setItem(key, JSON.stringify(cacheData));
+    },
+
+    get: (key) => {
+        try {
+            const cached = sessionStorage.getItem(key);
+            if (!cached) return null;
+
+            const cacheData = JSON.parse(cached);
+            if (Date.now() > cacheData.expiry) {
+                sessionStorage.removeItem(key);
+                return null;
+            }
+
+            return cacheData.value;
+        } catch (error) {
+            console.error('Cache get error:', error);
+            sessionStorage.removeItem(key);
+            return null;
+        }
+    },
+
+    remove: (key) => {
+        sessionStorage.removeItem(key);
+    },
+
+    clear: () => {
+        sessionStorage.removeItem(ROLE_CACHE_KEY);
+        sessionStorage.removeItem(ROLE_CACHE_EXPIRY_KEY);
+    }
+};
+
+// Enhanced Role Detector - ตรวจสอบ role จาก token โดยไม่ต้องเรียก API
+const RoleDetector = {
+    // ดึง role จาก JWT token โดยไม่ต้องเรียก API
+    getRoleFromToken: () => {
+        try {
+            const token = localStorage.getItem('AuthToken') || sessionStorage.getItem('AuthToken');
+            if (!token) return 'user';
+
+            // แยก JWT token เพื่อดึงข้อมูล payload
+            const parts = token.split('.');
+            if (parts.length !== 3) return 'user';
+
+            // Decode base64 payload
+            const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
+            
+            // ดึง role จาก payload
+            return payload.role || payload.user_role || payload.userRole || 'user';
+        } catch (error) {
+            console.error('Error parsing token:', error);
+            return 'user';
+        }
+    },
+
+    // ตรวจสอบว่า token ยังใช้งานได้หรือไม่
+    isTokenValid: () => {
+        try {
+            const token = localStorage.getItem('AuthToken') || sessionStorage.getItem('AuthToken');
+            if (!token) return false;
+
+            const parts = token.split('.');
+            if (parts.length !== 3) return false;
+
+            const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
+            
+            // ตรวจสอบว่า token หมดอายุหรือยัง
+            if (payload.exp && payload.exp * 1000 < Date.now()) {
+                return false;
+            }
+
+            return true;
+        } catch (error) {
+            console.error('Token validation error:', error);
+            return false;
+        }
     }
 };
 
@@ -278,6 +368,7 @@ const PinModal = ({ isOpen, onClose, onVerify, title }) => {
             if (err.message === 'TOKEN_EXPIRED') {
                 localStorage.removeItem('AuthToken');
                 sessionStorage.removeItem('AuthToken');
+                CacheManager.clear();
                 setError('เซสชั่นหมดอายุ กรุณาเข้าสู่ระบบใหม่');
                 setTimeout(() => {
                     window.location.href = '/auth/login';
@@ -301,9 +392,9 @@ const PinModal = ({ isOpen, onClose, onVerify, title }) => {
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 bg-gray-400/10 bg-opacity-20 flex items-center justify-center z-50 backdrop-blur-sm p-4" style={{ fontFamily: '"Kanit", sans-serif' }}>
+        <div className=" fixed inset-0 bg-gray-400/10 bg-opacity-20 flex items-center justify-center z-50 backdrop-blur-sm p-4" style={{ fontFamily: '"Kanit", sans-serif' }}>
             <div
-                className={`bg-white rounded-2xl p-6 sm:p-8 w-full max-w-sm sm:max-w-md shadow-2xl transform transition-all duration-300 ${isOpen ? 'scale-100 opacity-100' : 'scale-95 opacity-0'
+                className={`bg-white rounded-2xl p-6 sm:p-8 w-full max-w-sm sm:max-w-md shadow-2xl  transform transition-all duration-300 ${isOpen ? 'scale-100 opacity-100' : 'scale-95 opacity-0 animate-jump animate-once animate-duration-500 animate-ease-linear'
                     } ${shake ? 'animate-shake' : ''}`}
             >
                 <div className="text-center mb-6 sm:mb-8">
@@ -449,6 +540,7 @@ const PinModal = ({ isOpen, onClose, onVerify, title }) => {
 
             <style jsx>{`
         @keyframes shake {
+        
           0%, 100% { transform: translateX(0); }
           10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
           20%, 40%, 60%, 80% { transform: translateX(5px); }
@@ -492,6 +584,67 @@ const AuthManager = {
         localStorage.removeItem('AuthToken');
         sessionStorage.removeItem('AuthToken');
         this.clearPinToken();
+        CacheManager.clear();
+    }
+};
+
+// Enhanced Role Checker - ใช้การตรวจสอบแบบ instant
+const RoleChecker = {
+    // ดึง role แบบ instant จาก token หรือ cache
+    getCurrentUserRole: () => {
+        try {
+            // 1. ตรวจสอบ cache ก่อน (เร็วที่สุด)
+            const cachedRole = CacheManager.get(ROLE_CACHE_KEY);
+            if (cachedRole) {
+                return cachedRole;
+            }
+
+            // 2. ถ้าไม่มี cache ให้ดึงจาก token
+            if (!RoleDetector.isTokenValid()) {
+                return 'user';
+            }
+
+            const role = RoleDetector.getRoleFromToken();
+            
+            // 3. เก็บ role ลง cache
+            CacheManager.set(ROLE_CACHE_KEY, role);
+            
+            return role;
+        } catch (error) {
+            console.error('Error getting user role:', error);
+            return 'user';
+        }
+    },
+
+    // Async background refresh (ไม่บล็อก UI)
+    refreshRoleInBackground: async () => {
+        try {
+            if (!RoleDetector.isTokenValid()) {
+                CacheManager.clear();
+                return 'user';
+            }
+
+            // ทำ API call เพื่อยืนยัน role ในพื้นหลัง
+            const user = await ApiService.verifyToken();
+            const role = user?.role || 'user';
+            
+            // อัพเดท cache
+            CacheManager.set(ROLE_CACHE_KEY, role);
+            
+            return role;
+        } catch (error) {
+            console.error('Background role refresh failed:', error);
+            // หาก API call ล้มเหลว ให้ใช้ role จาก token
+            return RoleDetector.getRoleFromToken();
+        }
+    },
+
+    isAdmin(userRole) {
+        return userRole === 'admin' || userRole === 'administrator';
+    },
+
+    clearCache() {
+        CacheManager.clear();
     }
 };
 
@@ -509,6 +662,33 @@ const QuickActions = ({ customActions = [], className = "", showHeader = false, 
         type: 'success'
     });
 
+    // ใช้ role แบบ instant - ไม่มี loading state
+    const [userRole, setUserRole] = useState(() => RoleChecker.getCurrentUserRole());
+
+    // Background refresh role (ไม่บล็อก UI)
+    useEffect(() => {
+        let isMounted = true;
+
+        const backgroundRefresh = async () => {
+            try {
+                const refreshedRole = await RoleChecker.refreshRoleInBackground();
+                if (isMounted && refreshedRole !== userRole) {
+                    setUserRole(refreshedRole);
+                }
+            } catch (error) {
+                console.error('Background role refresh failed:', error);
+            }
+        };
+
+        // รอ 100ms แล้วค่อย refresh ในพื้นหลัง
+        const timer = setTimeout(backgroundRefresh, 100);
+
+        return () => {
+            isMounted = false;
+            clearTimeout(timer);
+        };
+    }, [userRole]);
+
     const showToast = (message, type = 'success') => {
         setToast({ show: true, message, type });
     };
@@ -518,216 +698,171 @@ const QuickActions = ({ customActions = [], className = "", showHeader = false, 
     };
 
     const handleLogout = () => {
-        document.cookie = 'pinToken=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/';
-        document.cookie = 'AuthToken=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/';
-        localStorage.removeItem('AuthToken');
+        AuthManager.logout();
         window.location.href = '/auth/login';
     };
 
-    const defaultActions = [
-        {
-            id: 'dashboard',
-            title: 'แดชบอร์ด',
-            subtitle: 'ข้อมูลสรุปและสถิติ',
-            icon: (
-                <svg className="w-8 h-8 sm:w-10 sm:h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />
-                </svg>
-            ),
-            bgColor: 'bg-white border border-gray-200',
-            iconBg: 'bg-blue-50',
-            iconColor: 'text-blue-600',
-            textColor: 'text-gray-800',
-            subtitleColor: 'text-gray-500',
-            hoverEffect: 'hover:border-blue-300 hover:shadow-md',
-            action: () => window.location.href = '/auth/employee',
-            requiresPin: true
-        },
-        {
-            id: 'Points',
-            title: 'แต้มสะสม',
-            subtitle: 'แต้มสะสม รางวัล และสิทธิประโยชน์',
-            icon: (
-                <svg className="w-8 h-8 sm:w-10 sm:h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
-                </svg>
-            ),
-            bgColor: 'bg-white border border-gray-200',
-            iconBg: 'bg-yellow-50',
-            iconColor: 'text-green-600',
-            textColor: 'text-gray-800',
-            subtitleColor: 'text-gray-500',
-            hoverEffect: 'hover:border-yellow-300 hover:shadow-md',
-            action: () => window.location.href = '/auth/employee/managepoint',
-            requiresPin: true,
-            badge: { text: '★', color: 'bg-yellow-500' }
-        },
-        {
-            id: 'inventory',
-            title: 'คลังสินค้า',
-            subtitle: 'จัดการสต๊อกและสินค้าคงเหลือ',
-            icon: (
-                <svg className="w-8 h-8 sm:w-10 sm:h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
-                </svg>
-            ),
-            bgColor: 'bg-white border border-gray-200',
-            iconBg: 'bg-purple-50',
-            iconColor: 'text-purple-600',
-            textColor: 'text-gray-800',
-            subtitleColor: 'text-gray-500',
-            hoverEffect: 'hover:border-purple-300 hover:shadow-md',
-            action: () => window.location.href = '/inventory',
-            requiresPin: true
-        },
-        {
-            id: 'products',
-            title: 'จัดการสินค้า',
-            subtitle: 'เพิ่ม แก้ไข ลบรายการสินค้า',
-            icon: (
-                <svg className="w-8 h-8 sm:w-10 sm:h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                </svg>
-            ),
-            bgColor: 'bg-white border border-gray-200',
-            iconBg: 'bg-indigo-50',
-            iconColor: 'text-indigo-600',
-            textColor: 'text-gray-800',
-            subtitleColor: 'text-gray-500',
-            hoverEffect: 'hover:border-indigo-300 hover:shadow-md',
-            action: () => window.location.href = '/auth/employee/menu',
-            requiresPin: true
-        },
-        {
-            id: 'customers',
-            title: 'ลูกค้า',
-            subtitle: 'ข้อมูลและประวัติการซื้อ',
-            icon: (
-                <svg className="w-8 h-8 sm:w-10 sm:h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                </svg>
-            ),
-            bgColor: 'bg-white border border-gray-200',
-            iconBg: 'bg-orange-50',
-            iconColor: 'text-orange-600',
-            textColor: 'text-gray-800',
-            subtitleColor: 'text-gray-500',
-            hoverEffect: 'hover:border-orange-300 hover:shadow-md',
-            action: () => window.location.href = '/customers',
-            requiresPin: true
-        },
-        {
-            id: 'analytics',
-            title: 'วิเคราะห์ข้อมูล',
-            subtitle: 'รายงานและสถิติการขาย',
-            icon: (
-                <svg className="w-8 h-8 sm:w-10 sm:h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                </svg>
-            ),
-            bgColor: 'bg-white border border-gray-200',
-            iconBg: 'bg-teal-50',
-            iconColor: 'text-teal-600',
-            textColor: 'text-gray-800',
-            subtitleColor: 'text-gray-500',
-            hoverEffect: 'hover:border-teal-300 hover:shadow-md',
-            action: () => window.location.href = '/analytics',
-            requiresPin: true
-        },
-        {
-            id: 'reports',
-            title: 'รายงาน',
-            subtitle: 'สร้างและดาวน์โหลดรายงาน',
-            icon: (
-                <svg className="w-8 h-8 sm:w-10 sm:h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-            ),
-            bgColor: 'bg-white border border-gray-200',
-            iconBg: 'bg-pink-50',
-            iconColor: 'text-pink-600',
-            textColor: 'text-gray-800',
-            subtitleColor: 'text-gray-500',
-            hoverEffect: 'hover:border-pink-300 hover:shadow-md',
-            action: () => window.location.href = '/reports',
-            requiresPin: true
-        },
-        {
-            id: 'employees',
-            title: 'พนักงาน',
-            subtitle: 'จัดการข้อมูลบุคลากร',
-            icon: (
-                <svg className="w-8 h-8 sm:w-10 sm:h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                </svg>
-            ),
-            bgColor: 'bg-white border border-gray-200',
-            iconBg: 'bg-violet-50',
-            iconColor: 'text-violet-600',
-            textColor: 'text-gray-800',
-            subtitleColor: 'text-gray-500',
-            hoverEffect: 'hover:border-violet-300 hover:shadow-md',
-            action: () => window.location.href = '/employees',
-            requiresPin: true
-        },
-        {
-            id: 'settings',
-            title: 'ตั้งค่าระบบ',
-            subtitle: 'การตั้งค่าและการกำหนดค่า',
-            icon: (
-                <svg className="w-8 h-8 sm:w-10 sm:h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-            ),
-            bgColor: 'bg-white border border-gray-200',
-            iconBg: 'bg-gray-50',
-            iconColor: 'text-gray-600',
-            textColor: 'text-gray-800',
-            subtitleColor: 'text-gray-500',
-            hoverEffect: 'hover:border-gray-300 hover:shadow-md',
-            action: () => window.location.href = '/settings',
-            requiresPin: false
-        },
-        {
-            id: 'help',
-            title: 'ศูนย์ช่วยเหลือ',
-            subtitle: 'คู่มือและการสนับสนุน',
-            icon: (
-                <svg className="w-8 h-8 sm:w-10 sm:h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-            ),
-            bgColor: 'bg-white border border-gray-200',
-            iconBg: 'bg-sky-50',
-            iconColor: 'text-sky-600',
-            textColor: 'text-gray-800',
-            subtitleColor: 'text-gray-500',
-            hoverEffect: 'hover:border-sky-300 hover:shadow-md',
-            action: () => window.location.href = '/help',
-            requiresPin: false
-        },
-        {
-            id: 'logout',
-            title: 'ออกจากระบบ',
-            subtitle: 'ออกจากระบบอย่างปลอดภัย',
-            icon: (
-                <svg className="w-8 h-8 sm:w-10 sm:h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                </svg>
-            ),
-            bgColor: 'bg-white border border-gray-200',
-            iconBg: 'bg-red-50',
-            iconColor: 'text-red-600',
-            textColor: 'text-gray-800',
-            subtitleColor: 'text-gray-500',
-            hoverEffect: 'hover:border-red-300 hover:shadow-md',
-            action: handleLogout,
-            requiresPin: false
-        }
-    ];
+    const getDefaultActions = () => {
+        const baseActions = [
+            {
+                id: 'Home',
+                title: 'หน้าหลัก',
+                subtitle: 'กลับไปยังหน้าหลัก',
+                icon: (
+                    <svg className="w-8 h-8 sm:w-10 sm:h-10 text-gray-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M3 9.75L12 3l9 6.75V20a1 1 0 01-1 1h-5.25a.75.75 0 01-.75-.75V14a.75.75 0 00-.75-.75h-3a.75.75 0 00-.75.75v6.25a.75.75 0 01-.75.75H4a1 1 0 01-1-1V9.75z" />
+                    </svg>
+                ),
+                bgColor: 'bg-white border border-gray-200',
+                iconBg: 'bg-gray-100',
+                iconColor: 'text-gray-800',
+                textColor: 'text-gray-900',
+                subtitleColor: 'text-gray-500',
+                hoverEffect: 'hover:border-gray-400 hover:shadow-md',
+                action: () => window.location.href = '/auth/employee',
+                requiresPin: false,
+                allowedRoles: ['all']
+            },
+            {
+                id: 'dashboard',
+                title: 'แดชบอร์ด',
+                subtitle: 'ข้อมูลสรุปและสถิติ',
+                icon: (
+                    <svg className="w-8 h-8 sm:w-10 sm:h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />
+                    </svg>
+                ),
+                bgColor: 'bg-white border border-gray-200',
+                iconBg: 'bg-blue-50',
+                iconColor: 'text-blue-600',
+                textColor: 'text-gray-800',
+                subtitleColor: 'text-gray-500',
+                hoverEffect: 'hover:border-blue-300 hover:shadow-md',
+                action: () => window.location.href = '/auth/employee/dashboard',
+                requiresPin: true,
+                allowedRoles: ['all']
+            },
+            {
+                id: 'Points',
+                title: 'จัดการแต้มสะสม',
+                subtitle: 'แต้มสะสม รางวัล และสิทธิประโยชน์',
+                icon: (
+                    <svg className="w-8 h-8 sm:w-10 sm:h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                    </svg>
+                ),
+                bgColor: 'bg-white border border-gray-200',
+                iconBg: 'bg-yellow-50',
+                iconColor: 'text-green-600',
+                textColor: 'text-gray-800',
+                subtitleColor: 'text-gray-500',
+                hoverEffect: 'hover:border-yellow-300 hover:shadow-md',
+                action: () => window.location.href = '/auth/employee/managepoint',
+                requiresPin: true,
+                allowedRoles: ['all']
+            },
+            {
+                id: 'products',
+                title: 'จัดการสินค้า',
+                subtitle: 'เพิ่ม แก้ไข ลบรายการสินค้า',
+                icon: (
+                    <svg className="w-8 h-8 sm:w-10 sm:h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                    </svg>
+                ),
+                bgColor: 'bg-white border border-gray-200',
+                iconBg: 'bg-indigo-50',
+                iconColor: 'text-indigo-600',
+                textColor: 'text-gray-800',
+                subtitleColor: 'text-gray-500',
+                hoverEffect: 'hover:border-indigo-300 hover:shadow-md',
+                action: () => window.location.href = '/auth/employee/menu',
+                requiresPin: true,
+                allowedRoles: ['all']
+            },
+            {
+                id: 'customers',
+                title: 'ลูกค้า',
+                subtitle: 'ข้อมูลและประวัติการซื้อ',
+                icon: (
+                    <svg className="w-8 h-8 sm:w-10 sm:h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                    </svg>
+                ),
+                bgColor: 'bg-white border border-gray-200',
+                iconBg: 'bg-orange-50',
+                iconColor: 'text-orange-600',
+                textColor: 'text-gray-800',
+                subtitleColor: 'text-gray-500',
+                hoverEffect: 'hover:border-orange-300 hover:shadow-md',
+                action: () => window.location.href = '/auth/employee/customers',
+                requiresPin: true,
+                allowedRoles: ['admin']
+            },
+            {
+                id: 'employees',
+                title: 'พนักงาน',
+                subtitle: 'จัดการข้อมูลบุคลากร',
+                icon: (
+                    <svg className="w-8 h-8 sm:w-10 sm:h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                    </svg>
+                ),
+                bgColor: 'bg-white border border-gray-200',
+                iconBg: 'bg-violet-50',
+                iconColor: 'text-violet-600',
+                textColor: 'text-gray-800',
+                subtitleColor: 'text-gray-500',
+                hoverEffect: 'hover:border-violet-300 hover:shadow-md',
+                action: () => window.location.href = '/auth/employee/employees',
+                requiresPin: true,
+                allowedRoles: ['admin']
+            },
+            {
+                id: 'logout',
+                title: 'ออกจากระบบ',
+                subtitle: 'ออกจากระบบอย่างปลอดภัย',
+                icon: (
+                    <svg className="w-8 h-8 sm:w-10 sm:h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                    </svg>
+                ),
+                bgColor: 'bg-white border border-gray-200',
+                iconBg: 'bg-red-50',
+                iconColor: 'text-red-600',
+                textColor: 'text-gray-800',
+                subtitleColor: 'text-gray-500',
+                hoverEffect: 'hover:border-red-300 hover:shadow-md',
+                action: handleLogout,
+                requiresPin: false,
+                allowedRoles: ['all']
+            }
+        ];
 
-    const allActions = [...defaultActions, ...customActions];
+        return baseActions;
+    };
+
+    // ฟิลเตอร์ actions ตาม role แบบ instant
+    const getFilteredActions = () => {
+        const defaultActions = getDefaultActions();
+        const allActions = [...defaultActions, ...customActions];
+
+        return allActions.filter(action => {
+            if (!action.allowedRoles || action.allowedRoles.includes('all')) {
+                return true;
+            }
+
+            if (action.allowedRoles.includes('admin') && RoleChecker.isAdmin(userRole)) {
+                return true;
+            }
+
+            if (action.allowedRoles.includes(userRole)) {
+                return true;
+            }
+
+            return false;
+        });
+    };
 
     const handleActionClick = useCallback(async (actionItem) => {
         if (actionItem.requiresPin === false || AuthManager.checkPinToken()) {
@@ -763,6 +898,9 @@ const QuickActions = ({ customActions = [], className = "", showHeader = false, 
         });
     }, []);
 
+    // ใช้ filteredActions ที่ได้จากการคำนวณแบบ instant
+    const filteredActions = getFilteredActions();
+
     return (
         <>
             <FontLoader />
@@ -772,11 +910,14 @@ const QuickActions = ({ customActions = [], className = "", showHeader = false, 
                         <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 text-center">
                             {headerTitle}
                         </h1>
+                        <p className="text-sm text-blue-600 text-center mt-2">
+                            สถานะ: {RoleChecker.isAdmin(userRole) ? 'ผู้ดูแลระบบ' : 'ผู้ใช้งาน'}
+                        </p>
                     </div>
                 )}
 
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4 sm:gap-6">
-                    {allActions.map((action) => (
+                    {filteredActions.map((action) => (
                         <button
                             key={action.id}
                             onClick={() => handleActionClick(action)}

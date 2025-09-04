@@ -1,384 +1,591 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, Suspense } from 'react';
 import { useNavigate } from 'react-router-dom';
-import QuickActions from '../quickaction';
+import Cookies from "js-cookie";
+import Toast from '../util/Toast';
+import { ChevronRight, Heart, Tag } from 'lucide-react';
 
-const ManagePoint = () => {
-  const navigate = useNavigate();
-  const [loading, setLoading] = useState(true);
-  const [formData, setFormData] = useState({ customer_info: '', userpoint: '' });
-  const [submitLoading, setSubmitLoading] = useState(false);
-  const [errors, setErrors] = useState({});
+const QuickActions = React.lazy(() => import('../quickaction'));
+
+// ------------------- Constants -------------------
+const API_CONFIG = {
+  BASE_URL: import.meta.env.VITE_API_URL,
+  ENDPOINTS: {
+    VERIFY_TOKEN: '/auth/verify-token',
+    ADD_POINTS: '/points/add',
+    USE_COUPON: '/coupon/usedcoupon'
+  }
+};
+
+const TOAST_DURATION = 4000;
+const REQUIRED_COOKIES = {
+  AUTH_TOKEN: 'AuthToken',
+  PIN_TOKEN: 'pinToken'
+};
+const COOKIE_NAMES = Object.values(REQUIRED_COOKIES);
+
+// ------------------- Utilities -------------------
+const getCookie = (name) => {
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  return parts.length === 2 ? parts.pop().split(';').shift() : null;
+};
+
+const clearCookies = () => {
+  COOKIE_NAMES.forEach(name => {
+    document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/`;
+  });
+};
+
+const hasRequiredCookies = () => {
+  const authToken = getCookie(REQUIRED_COOKIES.AUTH_TOKEN);
+  const pinToken = getCookie(REQUIRED_COOKIES.PIN_TOKEN);
+  return !!(authToken && pinToken);
+};
+
+const validateEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+const validatePhone = (phone) => /^[0-9]{9,10}$/.test(phone.replace(/[-\s]/g, ''));
+
+// ------------------- API Helper -------------------
+const createApiClient = (navigate) => {
+  const apiCall = async (endpoint, options = {}) => {
+    const token = getCookie(REQUIRED_COOKIES.AUTH_TOKEN);
+    if (!token) {
+      throw new Error('ไม่พบ Token การเข้าสู่ระบบ');
+    }
+
+    const response = await fetch(`${API_CONFIG.BASE_URL}${endpoint}`, {
+      ...options,
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        ...(options.headers || {})
+      }
+    });
+
+    if (response.status === 401) {
+      clearCookies();
+      navigate('/auth/login');
+      throw new Error('หมดเวลาการเข้าสู่ระบบ กรุณาเข้าสู่ระบบใหม่');
+    }
+
+    const data = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(data.error || data.message || 'เกิดข้อผิดพลาดจากเซิร์ฟเวอร์');
+    }
+
+    return data;
+  };
+
+  return {
+    verifyToken: () => apiCall(API_CONFIG.ENDPOINTS.VERIFY_TOKEN),
+    addPoints: (payload) => apiCall(API_CONFIG.ENDPOINTS.ADD_POINTS, {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    }),
+    useCoupon: (payload) => apiCall(API_CONFIG.ENDPOINTS.USE_COUPON, {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    })
+  };
+};
+
+// ------------------- Custom Hooks -------------------
+const useAuth = (navigate) => {
   const [currentUser, setCurrentUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const apiClient = useMemo(() => createApiClient(navigate), [navigate]);
 
   useEffect(() => {
-    const checkAuth = async () => {
-      console.log('🔍 Starting auth check...');
-      
-      const authToken = getCookie('AuthToken');
-      const pinToken = getCookie('pinToken');
-      
-      console.log('🍪 AuthToken:', authToken ? 'Found' : 'Not found');
-      console.log('🍪 PinToken:', pinToken ? 'Found' : 'Not found');
-      
-      // ตรวจสอบว่ามี AuthToken หรือไม่
-      if (!authToken || !pinToken) {
-        console.log('❌ Missing tokens, redirecting to login...');
-        // ลบ cookies ทั้งหมด
-        document.cookie = 'AuthToken=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/';
-        document.cookie = 'pinToken=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/';
-        navigate('/auth/login');
-        return;
-      }
-      
+    let isMounted = true;
+
+    const verifyAuth = async () => {
       try {
-        console.log('📞 Calling getUserInfo with token...');
-        // ดึงข้อมูลผู้ใช้จาก Token
-        const userResponse = await getUserInfo(authToken);
-        console.log('👤 User info response:', userResponse);
-        
-        // ตรวจสอบ response structure
-        if (!userResponse || userResponse.status !== 'OK' || !userResponse.user) {
-          console.log('🚫 Invalid response structure or status not OK');
-          alert('ไม่สามารถตรวจสอบข้อมูลผู้ใช้ได้');
-          // ลบ cookies และ redirect
-          document.cookie = 'AuthToken=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/';
-          document.cookie = 'pinToken=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/';
-          navigate('/auth/login');
+        if (!hasRequiredCookies()) {
+          if (isMounted) {
+            setError('ไม่พบข้อมูลการเข้าสู่ระบบ (AuthToken หรือ pinToken)');
+            clearCookies();
+            navigate('/auth/login');
+          }
           return;
         }
 
-        const userData = userResponse.user;
-        console.log('👤 User data:', userData);
-        console.log('🔐 User role:', userData.role);
+        const data = await apiClient.verifyToken();
         
-        // ตรวจสอบสิทธิ์ (สามารถปรับเป็น role อื่นได้ตามต้องการ)
-        const allowedRoles = ['admin', 'employee']; // เพิ่ม employee เข้าไปด้วย
-        if (!allowedRoles.includes(userData.role)) {
-          console.log('🚫 User role not allowed:', userData.role);
-          alert('คุณไม่มีสิทธิเข้าถึงหน้านี้');
-          // ลบ cookies และ redirect
-          document.cookie = 'AuthToken=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/';
-          document.cookie = 'pinToken=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/';
-          navigate('/auth/login');
-          return;
+        if (isMounted) {
+          if (data && (data.user || data.status === 'OK')) {
+            setCurrentUser(data.user || data);
+            setError(null);
+          } else {
+            setError('ข้อมูลการเข้าสู่ระบบไม่ถูกต้อง');
+            clearCookies();
+            navigate('/auth/login');
+          }
         }
-        
-        console.log('✅ Auth successful, setting user data');
-        // ตั้งค่าข้อมูลผู้ใช้
-        const userInfo = {
-          id: userData.empid,
-          name: userData.name,
-          firstname: userData.firstname,
-          lastname: userData.lastname,
-          empid: userData.empid,
-          role: userData.role,
-          pincode: userData.pincode
-        };
-        
-        setCurrentUser(userInfo);
-        setLoading(false);
-        
-      } catch (error) {
-        console.error('❌ Auth error:', error);
-        // ลบ cookies เมื่อ token ไม่ถูกต้อง
-        document.cookie = 'AuthToken=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/';
-        document.cookie = 'pinToken=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/';
-        navigate('/auth/login');
+      } catch (err) {
+        if (isMounted) {
+          setError(err.message);
+          if (err.message.includes('401') || err.message.includes('หมดเวลา') || err.message.includes('Unauthorized')) {
+            clearCookies();
+            navigate('/auth/login');
+          }
+        }
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     };
 
-    checkAuth();
+    verifyAuth();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [navigate, apiClient]);
+
+  return { currentUser, loading, error };
+};
+
+const useToast = () => {
+  const [toast, setToast] = useState({
+    isVisible: false,
+    type: 'success',
+    message: ''
+  });
+
+  const showToast = useCallback((message, type = 'success') => {
+    setToast({
+      isVisible: true,
+      type,
+      message
+    });
+  }, []);
+
+  const hideToast = useCallback(() => {
+    setToast(prev => ({ ...prev, isVisible: false }));
+  }, []);
+
+  return { toast, showToast, hideToast };
+};
+
+const useForm = (initialState, validationRules = {}) => {
+  const [formData, setFormData] = useState(initialState);
+  const [errors, setErrors] = useState({});
+  const [loading, setLoading] = useState(false);
+
+  const updateField = useCallback((name, value) => {
+    setFormData(prev => ({ ...prev, [name]: value }));
+    if (errors[name]) {
+      setErrors(prev => ({ ...prev, [name]: null }));
+    }
+  }, [errors]);
+
+  const validate = useCallback(() => {
+    const newErrors = {};
+    
+    Object.entries(validationRules).forEach(([field, rules]) => {
+      const value = formData[field];
+      
+      if (rules.required && (!value || !value.toString().trim())) {
+        newErrors[field] = rules.required;
+      } else if (rules.custom && value) {
+        const customError = rules.custom(value);
+        if (customError) {
+          newErrors[field] = customError;
+        }
+      }
+    });
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  }, [formData, validationRules]);
+
+  const reset = useCallback(() => {
+    setFormData(initialState);
+    setErrors({});
+    setLoading(false);
+  }, [initialState]);
+
+  return {
+    formData,
+    errors,
+    loading,
+    setLoading,
+    updateField,
+    validate,
+    reset
+  };
+};
+
+// ------------------- Validation Rules -------------------
+const pointsValidationRules = {
+  customer_info: {
+    required: 'กรุณากรอกข้อมูลลูกค้า (รหัสลูกค้า, เบอร์โทร, หรือชื่อ)',
+    custom: (value) => {
+      const trimmed = value.trim();
+      if (trimmed.length < 3) {
+        return 'ข้อมูลลูกค้าต้องมีความยาวอย่างน้อย 3 ตัวอักษร';
+      }
+      return null;
+    }
+  },
+  userpoint: {
+    required: 'กรุณากรอกจำนวนเงิน',
+    custom: (value) => {
+      const num = Number(value);
+      if (isNaN(num) || num <= 0) {
+        return 'กรุณากรอกจำนวนเงินที่ถูกต้อง (มากกว่า 0)';
+      }
+      if (num > 999999) {
+        return 'จำนวนเงินไม่ควรเกิน 999,999 บาท';
+      }
+      return null;
+    }
+  }
+};
+
+const couponValidationRules = {
+  coupon_code: {
+    required: 'กรุณากรอกรหัสคูปอง',
+    custom: (value) => {
+      const trimmed = value.trim();
+      if (trimmed.length < 3) {
+        return 'รหัสคูปองต้องมีความยาวอย่างน้อย 3 ตัวอักษร';
+      }
+      if (!/^[A-Z0-9-_]+$/.test(trimmed.toUpperCase())) {
+        return 'รหัสคูปองสามารถประกอบด้วย A-Z, 0-9, - และ _ เท่านั้น';
+      }
+      return null;
+    }
+  }
+};
+
+// ------------------- Components -------------------
+const LoadingSpinner = () => (
+  <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center p-4">
+    <div className="text-center p-6 bg-white/90 backdrop-blur-sm rounded-xl shadow-lg border border-slate-200">
+      <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-indigo-600 mx-auto"></div>
+      <p className="mt-4 text-gray-600 font-medium text-lg">กำลังตรวจสอบสิทธิ์...</p>
+    </div>
+  </div>
+);
+
+const UserHeader = React.memo(({ user }) => (
+  <div className="text-right">
+    <p className="text-sm font-medium text-gray-900">
+      {user.firstname} {user.lastname}
+    </p>
+    <p className="text-xs text-gray-500">
+      {user.empid} • {user.role}
+    </p>
+  </div>
+));
+
+const ModeToggle = React.memo(({ currentMode, onModeChange }) => (
+  <div className="flex justify-center mb-6">
+    <div className="flex bg-white p-1 rounded-full shadow-lg border border-gray-200">
+      <button
+        onClick={() => onModeChange('points')}
+        className={`flex-1 px-4 py-2 sm:px-6 sm:py-2.5 rounded-full font-medium transition-all duration-300 transform ${
+          currentMode === 'points' 
+            ? 'bg-indigo-600 text-white shadow-md' 
+            : 'text-gray-600 hover:text-indigo-600'
+        } flex items-center justify-center space-x-2`}
+        type="button"
+      >
+        <Heart className="w-5 h-5 sm:w-6 sm:h-6" />
+        <span className="hidden sm:block">เพิ่มแต้มสะสม</span>
+      </button>
+      <button
+        onClick={() => onModeChange('coupon')}
+        className={`flex-1 px-4 py-2 sm:px-6 sm:py-2.5 rounded-full font-medium transition-all duration-300 transform ${
+          currentMode === 'coupon' 
+            ? 'bg-teal-600 text-white shadow-md' 
+            : 'text-gray-600 hover:text-teal-600'
+        } flex items-center justify-center space-x-2`}
+        type="button"
+      >
+        <Tag className="w-5 h-5 sm:w-6 sm:h-6" />
+        <span className="hidden sm:block">กรอกคูปอง</span>
+      </button>
+    </div>
+  </div>
+));
+
+const FormInput = React.memo(({ 
+  type = 'text', 
+  name, 
+  value, 
+  onChange, 
+  placeholder, 
+  error, 
+  className = '', 
+  ...props 
+}) => (
+  <div className="mb-4">
+    <input
+      type={type}
+      name={name}
+      value={value}
+      onChange={(e) => onChange(name, e.target.value)}
+      className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:outline-none transition-all duration-200 ${
+        error 
+          ? 'border-red-500 focus:ring-red-200' 
+          : 'border-gray-300 focus:ring-blue-200 focus:border-blue-500'
+      } ${className}`}
+      placeholder={placeholder}
+      {...props}
+    />
+    {error && (
+      <p className="mt-1 text-sm text-red-600 bg-red-50 p-2 rounded border-l-4 border-red-400">
+        {error}
+      </p>
+    )}
+  </div>
+));
+
+// ------------------- Main Component -------------------
+const ManagePoint = () => {
+  const navigate = useNavigate();
+  const { currentUser, loading } = useAuth(navigate);
+  const { toast, showToast, hideToast } = useToast();
+  const [currentMode, setCurrentMode] = useState('points');
+
+  const apiClient = useMemo(() => createApiClient(navigate), [navigate]);
+
+  // Points form
+  const pointsForm = useForm(
+    { customer_info: '', userpoint: '' },
+    pointsValidationRules
+  );
+
+  // Coupon form
+  const couponForm = useForm(
+    { coupon_code: '' },
+    couponValidationRules
+  );
+
+  const handleLogout = useCallback(() => {
+    clearCookies();
+    navigate('/auth/login');
   }, [navigate]);
 
-  const getCookie = (name) => {
-    const value = `; ${document.cookie}`;
-    const parts = value.split(`; ${name}=`);
-    if (parts.length === 2) return parts.pop().split(';').shift();
-    return null;
-  };
+  const handleModeChange = useCallback((mode) => {
+    setCurrentMode(mode);
+    pointsForm.reset();
+    couponForm.reset();
+  }, [pointsForm, couponForm]);
 
-  const getUserInfo = async (token) => {
-    try {
-      const API_URL = import.meta.env.VITE_API_URL;
-      console.log('🌐 API URL:', API_URL);
-      console.log('🔑 Using token:', token.substring(0, 10) + '...' + token.substring(token.length - 10));
-      
-      const response = await fetch(`${API_URL}/auth/verify-token`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
+  // ------------------- Actions -------------------
+  const handleAddPoints = useCallback(async () => {
+    if (pointsForm.loading || !pointsForm.validate()) return;
 
-      console.log('📡 Response status:', response.status);
-      console.log('📡 Response ok:', response.ok);
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.log('❌ Error response:', errorText);
-        throw new Error(`Failed to get user info: ${response.status} ${errorText}`);
-      }
-
-      const userInfo = await response.json();
-      console.log('📄 User info received:', JSON.stringify(userInfo, null, 2));
-      
-      // ตรวจสอบว่า response มี structure ที่ถูกต้องหรือไม่
-      if (userInfo.status === 'OK' && userInfo.user) {
-        console.log('✅ Valid response structure');
-        return userInfo;
-      } else {
-        console.log('❌ Invalid response structure');
-        throw new Error('Invalid response structure');
-      }
-    } catch (error) {
-      console.error('💥 Error fetching user info:', error);
-      throw error;
-    }
-  };
-
-  const handleLogout = () => {
-    // ลบ cookies ทั้งหมด
-    document.cookie = 'AuthToken=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/';
-    document.cookie = 'pinToken=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/';
-    navigate('/auth/login');
-  };
-
-  const handleAddPoints = async (e) => {
-    if (e) e.preventDefault();
-    if (submitLoading) return;
+    pointsForm.setLoading(true);
     
-    console.log('🎯 Starting add points process...');
-    setSubmitLoading(true);
-    setErrors({});
-
-    const pointNumber = Number(formData.userpoint);
-    console.log('📝 Form data:', { customer_info: formData.customer_info, userpoint: pointNumber });
-
-    // Validation
-    if (!formData.customer_info.trim()) {
-      console.log('❌ Validation failed: customer_info empty');
-      setErrors({ customer_info: 'กรุณากรอกข้อมูลลูกค้า' });
-      setSubmitLoading(false);
-      return;
-    }
-
-    if (!formData.userpoint || pointNumber <= 0 || isNaN(pointNumber)) {
-      console.log('❌ Validation failed: invalid userpoint');
-      setErrors({ userpoint: 'กรุณากรอกจำนวนแต้มที่ถูกต้อง' });
-      setSubmitLoading(false);
-      return;
-    }
-
-    const requestData = {
-      customer_info: formData.customer_info.trim(),
-      userpoint: parseInt(pointNumber)
-    };
-    console.log('📤 Request data:', JSON.stringify(requestData, null, 2));
-
     try {
-      const authToken = getCookie('AuthToken');
-      if (!authToken) {
-        console.log('❌ No auth token found');
-        alert('Session หมดอายุ กรุณาเข้าสู่ระบบใหม่');
-        navigate('/auth/login');
-        return;
-      }
+      const payload = {
+        customer_info: pointsForm.formData.customer_info.trim(),
+        userpoint: parseInt(pointsForm.formData.userpoint)
+      };
 
-      const API_URL = import.meta.env.VITE_API_URL;
-      console.log('🌐 Calling API:', `${API_URL}/points/add`);
-      console.log('🔑 Using token:', authToken.substring(0, 10) + '...' + authToken.substring(authToken.length - 10));
+      await apiClient.addPoints(payload);
       
-      const response = await fetch(`${API_URL}/points/add`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authToken}`
-        },
-        body: JSON.stringify(requestData)
-      });
-
-      console.log('📡 Response status:', response.status);
-      console.log('📡 Response ok:', response.ok);
-
-      const result = await response.json();
-      console.log('📄 Response data:', JSON.stringify(result, null, 2));
-
-      if (response.ok) {
-        console.log('✅ Points added successfully');
-        alert('เพิ่มแต้มสำเร็จ!');
-        setFormData({ customer_info: '', userpoint: '' });
-      } else {
-        console.log('❌ API returned error');
-        // หาก token หมดอายุหรือไม่ถูกต้อง
-        if (response.status === 401) {
-          console.log('🚫 Token expired or invalid (401)');
-          alert('Session หมดอายุ กรุณาเข้าสู่ระบบใหม่');
-          handleLogout();
-          return;
-        }
-
-        if (result.errors) {
-          console.log('📝 Setting field errors:', result.errors);
-          setErrors(result.errors);
-        } else if (result.error) {
-          console.log('📝 Setting general error:', result.error);
-          setErrors({ general: result.error });
-        } else {
-          console.log('📝 Unknown error format');
-          alert(result.message || 'เกิดข้อผิดพลาดในการเพิ่มแต้ม');
-        }
-      }
-    } catch (error) {
-      console.error('💥 Network or other error:', error);
-      alert('เกิดข้อผิดพลาดในการเชื่อมต่อ API');
+      showToast(
+        `เพิ่มแต้มให้กับ ${payload.customer_info} (${payload.userpoint.toLocaleString()} บาท) เรียบร้อยแล้ว`,
+        'success'
+      );
+      pointsForm.reset();
+    } catch (err) {
+      showToast(`ไม่สามารถเพิ่มแต้มได้: ${err.message}`, 'error');
     } finally {
-      console.log('🏁 Add points process completed');
-      setSubmitLoading(false);
+      pointsForm.setLoading(false);
     }
-  };
+  }, [pointsForm, apiClient, showToast]);
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    const newValue = name === 'userpoint' ? (value === '' ? '' : Number(value)) : value;
+  const handleAddCoupon = useCallback(async () => {
+    if (couponForm.loading || !couponForm.validate()) return;
+
+    couponForm.setLoading(true);
     
-    setFormData(prev => ({ ...prev, [name]: newValue }));
-    
-    if (errors[name]) {
-      setErrors(prev => ({ ...prev, [name]: '' }));
+    try {
+      const code = couponForm.formData.coupon_code.trim().toUpperCase();
+      await apiClient.useCoupon({ coupon_code: code });
+      
+      showToast(`ใช้คูปอง ${code} เรียบร้อยแล้ว`, 'success');
+      couponForm.reset();
+    } catch (err) {
+      showToast(`ไม่สามารถใช้คูปองได้: ${err.message}`, 'error');
+    } finally {
+      couponForm.setLoading(false);
     }
-  };
+  }, [couponForm, apiClient, showToast]);
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">กำลังตรวจสอบสิทธิ...</p>
-        </div>
-      </div>
-    );
-  }
+  // ------------------- Rendering -------------------
+  if (loading) return <LoadingSpinner />;
+  if (!currentUser) return null;
 
-  // ถ้าไม่มี currentUser ให้แสดง loading หรือ redirect
-  if (!currentUser) {
-    return null;
-  }
+  const currentTitle = currentMode === 'points' ? 'จัดการแต้มสะสม' : 'จัดการคูปอง';
+  const currentSubtitle = currentMode === 'points' 
+    ? 'เพิ่มแต้มสะสมจากการซื้อของลูกค้า' 
+    : 'กรอกรหัสคูปองให้กับลูกค้า';
+  
+  const formAction = currentMode === 'points' ? handleAddPoints : handleAddCoupon;
+  const currentForm = currentMode === 'points' ? pointsForm : couponForm;
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex flex-col">
+      {/* Toast */}
+      <Toast
+        isVisible={toast.isVisible}
+        type={toast.type}
+        message={toast.message}
+        onClose={hideToast}
+        duration={TOAST_DURATION}
+        position="top-right"
+      />
+      
       {/* Header */}
-      <div className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <header className="relative bg-white/80 backdrop-blur-lg shadow-sm border-b border-gray-200/50 flex-shrink-0">
+        <div className="w-full px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">จัดการแต้มสะสม</h1>
-              <p className="text-sm text-gray-500">เพิ่มแต้มสะสมให้ลูกค้า</p>
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
+                {currentTitle}
+              </h1>
+              <p className="text-sm text-gray-500">
+                {currentSubtitle}
+              </p>
             </div>
             <div className="flex items-center space-x-4">
-              <div className="text-right">
-                <p className="text-sm font-medium text-gray-900">
-                  {currentUser.firstname} {currentUser.lastname} ({currentUser.name})
-                </p>
-                <p className="text-xs text-gray-500">
-                  {currentUser.empid} • {currentUser.role}
-                </p>
-              </div>
-              <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
-                <span className="text-white text-sm font-medium">
-                  {currentUser.firstname ? currentUser.firstname.charAt(0).toUpperCase() : currentUser.name.charAt(0).toUpperCase()}
-                </span>
+              <UserHeader user={currentUser} />
+              <div className="w-9 h-9 sm:w-10 sm:h-10 bg-blue-600 rounded-full flex items-center justify-center text-white text-sm font-medium flex-shrink-0">
+                {(currentUser.firstname || currentUser.name).charAt(0).toUpperCase()}
               </div>
             </div>
           </div>
         </div>
-      </div>
-
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <QuickActions
-          userId={currentUser.id}
-          onLogout={handleLogout}
-          showLogout={true}
-        />
-
-        {/* Main Content */}
-        <div className="mt-8 bg-white rounded-lg shadow-sm p-6">
-          <div className="max-w-md mx-auto">
-            <h2 className="text-xl font-semibold text-gray-900 mb-6 text-center">เพิ่มแต้มสะสม</h2>
-            
-            <div className="space-y-4">
-              {errors.general && (
-                <div className="p-3 bg-red-100 border border-red-400 text-red-700 rounded">
-                  {errors.general}
+      </header>
+      
+      {/* Content */}
+      <main className="flex-1 w-full overflow-auto">
+        <div className="w-full px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+          <Suspense fallback={
+            <div className="bg-white/70 backdrop-blur-sm rounded-xl shadow p-6">
+              <div className="animate-pulse">
+                <div className="h-4 bg-gray-200 rounded w-1/4 mb-4"></div>
+                <div className="space-y-3">
+                  <div className="h-12 bg-gray-200 rounded"></div>
+                  <div className="h-12 bg-gray-200 rounded"></div>
                 </div>
-              )}
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  ข้อมูลลูกค้า
-                </label>
-                <input
-                  type="text"
-                  name="customer_info"
-                  value={formData.customer_info}
-                  onChange={handleChange}
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                    errors.customer_info ? 'border-red-500' : 'border-gray-300'
-                  }`}
-                  placeholder="รหัสลูกค้า, เบอร์โทร, หรือชื่อลูกค้า"
-                  required
-                />
-                {errors.customer_info && (
-                  <p className="mt-1 text-sm text-red-600">{errors.customer_info}</p>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  จำนวนแต้ม
-                </label>
-                <input
-                  type="number"
-                  name="userpoint"
-                  value={formData.userpoint}
-                  onChange={handleChange}
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                    errors.userpoint ? 'border-red-500' : 'border-gray-300'
-                  }`}
-                  placeholder="จำนวนแต้มที่ต้องการเพิ่ม"
-                  min="1"
-                  required
-                />
-                {errors.userpoint && (
-                  <p className="mt-1 text-sm text-red-600">{errors.userpoint}</p>
-                )}
               </div>
             </div>
+          }>
+            <QuickActions />
+          </Suspense>
+          
+          {/* Main Form Card */}
+          <div className="mt-8 bg-white/70 backdrop-blur-sm rounded-xl shadow-lg p-6 sm:p-8 border border-white/80 transition-all duration-200">
+            <ModeToggle currentMode={currentMode} onModeChange={handleModeChange} />
 
-            <div className="mt-6">
+            <div className="max-w-md mx-auto">
+              {/* Conditional Form Rendering */}
+              {currentMode === 'points' && (
+                <>
+                  <FormInput
+                    name="customer_info"
+                    value={pointsForm.formData.customer_info}
+                    onChange={pointsForm.updateField}
+                    placeholder="รหัสลูกค้า, เบอร์โทร, หรือชื่อลูกค้า"
+                    error={pointsForm.errors.customer_info}
+                    maxLength={50}
+                  />
+                  <FormInput
+                    type="number"
+                    name="userpoint"
+                    value={pointsForm.formData.userpoint}
+                    onChange={pointsForm.updateField}
+                    placeholder="จำนวนเงินรวมของลูกค้า (บาท)"
+                    error={pointsForm.errors.userpoint}
+                    min="1"
+                    max="999999"
+                  />
+                </>
+              )}
+
+              {currentMode === 'coupon' && (
+                <FormInput
+                  name="coupon_code"
+                  value={couponForm.formData.coupon_code}
+                  onChange={(name, value) => couponForm.updateField(name, value.toUpperCase())}
+                  placeholder="กรอกรหัสคูปอง (เช่น SUMMER2024)"
+                  error={couponForm.errors.coupon_code}
+                  className="uppercase"
+                  maxLength={20}
+                />
+              )}
+
               <button
                 type="button"
-                onClick={handleAddPoints}
-                disabled={submitLoading || !formData.customer_info || !formData.userpoint}
-                className={`w-full px-4 py-3 text-white rounded-md font-medium transition-colors ${
-                  submitLoading || !formData.customer_info || !formData.userpoint
+                onClick={formAction}
+                disabled={currentForm.loading}
+                className={`w-full mt-4 px-6 py-3 text-white rounded-lg font-medium transition-all duration-200 transform ${
+                  currentForm.loading 
                     ? 'bg-gray-400 cursor-not-allowed' 
-                    : 'bg-blue-600 hover:bg-blue-700'
+                    : currentMode === 'points'
+                    ? 'bg-indigo-600 hover:bg-indigo-700 hover:shadow-lg hover:scale-105 active:scale-95'
+                    : 'bg-teal-600 hover:bg-teal-700 hover:shadow-lg hover:scale-105 active:scale-95'
                 }`}
               >
-                {submitLoading ? (
-                  <div className="flex items-center justify-center">
-                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-                    กำลังเพิ่มแต้ม...
-                  </div>
+                {currentForm.loading ? (
+                  <span className="flex items-center justify-center">
+                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    {currentMode === 'points' ? 'กำลังเพิ่มแต้ม...' : 'กำลังใช้คูปอง...'}
+                  </span>
                 ) : (
-                  'เพิ่มแต้ม'
+                  currentMode === 'points' ? '🎯 เพิ่มแต้มสะสม' : '🎫 ใช้คูปอง'
                 )}
               </button>
             </div>
           </div>
+
+          {/* Help Section */}
+          <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4 sm:p-6">
+            <div className="flex">
+              <div className="flex-shrink-0 mt-1">
+                <svg className="h-5 w-5 text-blue-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div className="ml-3">
+                <h3 className="text-sm font-medium text-blue-800">
+                  คำแนะนำการใช้งาน
+                </h3>
+                <div className="mt-2 text-sm text-blue-700">
+                  {currentMode === 'points' ? (
+                    <ul className="list-disc list-inside space-y-1">
+                      <li>กรอกรหัสลูกค้า เบอร์โทรศัพท์ หรือชื่อลูกค้า</li>
+                      <li>กรอกจำนวนเงินรวมที่ลูกค้าซื้อ (จะคำนวณแต้มตามอัตรา)</li>
+                      <li>ตรวจสอบข้อมูลก่อนกดเพิ่มแต้ม</li>
+                    </ul>
+                  ) : (
+                    <ul className="list-disc list-inside space-y-1">
+                      <li>กรอกรหัสคูปองที่ถูกต้อง</li>
+                      <li>รหัสคูปองประกอบด้วย A-Z, 0-9, - และ _ เท่านั้น</li>
+                      <li>ระบบจะตรวจสอบความถูกต้องและสถานะของคูปอง</li>
+                    </ul>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
+      </main>
     </div>
   );
 };
