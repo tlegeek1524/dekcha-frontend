@@ -302,14 +302,14 @@ const ListCustomer = () => {
                   <th className="text-left py-4 px-6 font-semibold text-gray-700 text-sm">รหัสลูกค้า</th>
                   <th className="text-left py-4 px-6 font-semibold text-gray-700 text-sm">เบอร์โทร</th>
                   <th className="text-left py-4 px-6 font-semibold text-gray-700 text-sm">แต้ม</th>
-                  <th className="text-left py-4 px-6 font-semibold text-gray-700 text-sm">สถานะ</th>
+                  {/* <th className="text-left py-4 px-6 font-semibold text-gray-700 text-sm">สถานะ</th> */}
                   <th className="text-left py-4 px-6 font-semibold text-gray-700 text-sm">สร้างเมื่อ</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {filteredCustomers.length === 0 ? (
                   <tr>
-                    <td colSpan="6" className="text-center py-16">
+                    <td colSpan="5" className="text-center py-16">
                       <Users className="h-12 w-12 text-gray-300 mx-auto mb-4" />
                       <p className="text-gray-500 text-lg">
                         {searchTerm ? 'ไม่พบข้อมูลที่ค้นหา' : 'ไม่มีข้อมูลลูกค้า'}
@@ -353,15 +353,7 @@ const ListCustomer = () => {
                           </span>
                         </div>
                       </td>
-                      <td className="py-4 px-6">
-                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                          customer.isactive 
-                            ? 'bg-green-100 text-green-800' 
-                            : 'bg-red-100 text-red-800'
-                        }`}>
-                          {customer.isactive ? 'ใช้งานอยู่' : 'ไม่ใช้งาน'}
-                        </span>
-                      </td>
+                      {/* สถานะถูกลบออก */}
                       <td className="py-4 px-6">
                         <div className="text-sm text-gray-600">
                           {formatDate(customer.createdat)}
@@ -397,13 +389,7 @@ const ListCustomer = () => {
                             <h3 className="font-medium text-gray-900 text-base">{customer.name || 'ไม่ระบุชื่อ'}</h3>
                             <p className="text-sm text-gray-500">ID: {customer.id}</p>
                           </div>
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium flex-shrink-0 ${
-                            customer.isactive 
-                              ? 'bg-green-100 text-green-800' 
-                              : 'bg-red-100 text-red-800'
-                          }`}>
-                            {customer.isactive ? 'ใช้งานอยู่' : 'ไม่ใช้งาน'}
-                          </span>
+                          {/* สถานะถูกลบออก */}
                         </div>
                         
                         <div className="grid grid-cols-2 gap-3 text-sm">

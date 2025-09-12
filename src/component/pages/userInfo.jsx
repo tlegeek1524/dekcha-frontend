@@ -122,6 +122,14 @@ const UserInfo = () => {
   const abortRef = useRef();
   const ongoingRequests = useRef(new Set());
 
+  // Hook to inject fonts into the document head
+  useEffect(() => {
+    const link = document.createElement('link');
+    link.href = 'https://fonts.googleapis.com/css2?family=Kanit:wght@200;300;400;500;600;700;800&family=Prompt:wght@200;300;400;500;600;700;800&display=swap';
+    link.rel = 'stylesheet';
+    document.head.appendChild(link);
+  }, []);
+
   const showToast = useCallback((message, type = 'info') => {
     setToast({ show: true, message, type });
     setTimeout(() => setToast({ show: false, message: '', type: '' }), 3500);
@@ -333,7 +341,7 @@ const UserInfo = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-white">
+      <div className="w-full h-screen bg-white font-['Kanit',sans-serif]">
         <Spinner />
         <Navbar user={navbarUser} safeName={safeName} />
       </div>
@@ -342,10 +350,10 @@ const UserInfo = () => {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-white">
+      <div className="w-full h-screen bg-white font-['Kanit',sans-serif]">
         <Navbar user={navbarUser} safeName={safeName} />
-        <div className="container mx-auto px-4 py-8">
-          <div className="max-w-2xl mx-auto">
+        <div className="w-full h-full flex items-center justify-center p-4">
+          <div className="w-full max-w-md">
             <div className="bg-white rounded-2xl shadow-xl border border-red-200 p-8 text-center">
               <Icons.Error />
               <h2 className="text-2xl font-bold text-gray-800 mb-4">ไม่พบข้อมูลผู้ใช้</h2>
@@ -363,173 +371,163 @@ const UserInfo = () => {
   }
 
   return (
-    <div className="min-h-screen bg-white">
+     <div className=" w-full h-screen bg-white flex flex-col font-['Kanit',sans-serif]">
       <Navbar user={navbarUser} safeName={safeName} />
       <Toast {...toast} />
-      
-      <div className="container mx-auto px-4 py-8">
-        <div className="max-w-2xl mx-auto">
-          <div className="bg-white rounded-3xl shadow-xl border border-gray-200 overflow-hidden"> {/* เปลี่ยน border เป็น gray-200 */}
-            <div className="bg-gradient-to-br from-[#8d6e63] to-[#3e2723] px-8 py-8 text-white">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-4">
-                  <div className="w-16 h-16 rounded-full overflow-hidden border-4 border-white/30 bg-white/20 flex items-center justify-center shadow-2xl">
-                    {user.pictureurl ? (
-                      <img
-                        src={user.pictureurl}
-                        alt={user.displayName}
-                        className="w-full h-full object-cover"
-                        loading="lazy"
-                        onError={e => {
-                          e.target.style.display = 'none';
-                          e.target.nextSibling.style.display = 'flex';
-                        }}
-                      />
-                    ) : null}
-                    <div className="w-full h-full bg-white/20 flex items-center justify-center text-white text-xl font-bold" style={{ display: user.pictureurl ? 'none' : 'flex' }}>
-                      {user.displayName?.charAt(0).toUpperCase() || 'U'}
-                    </div>
-                  </div>
-                  <div>
-                    <h1 className="text-2xl font-bold font-serif">{user.displayName}</h1>
-                    <p className="text-amber-50 text-sm">รหัสผู้ใช้: {user.uid}</p>
-                  </div>
-                </div>
-              </div>
-            </div>
 
-            <div className="p-8 space-y-6">
-              <div className="bg-white rounded-2xl p-6 border border-gray-200"> {/* เปลี่ยน bg และ border เป็น white/gray */}
-                <div className="flex justify-between items-center">
-                  <div>
-                    <h3 className="font-semibold text-gray-700 mb-1">User ID</h3>
-                    <code className="text-sm text-gray-600 font-mono bg-gray-50 px-3 py-1 rounded-lg border"> {/* เปลี่ยน bg เป็น gray-50 */}
-                      {user.uid}
-                    </code>
-                  </div>
-                  <button
-                    onClick={prefetchData}
-                    className="p-2 bg-[#6d4c41] hover:bg-[#5d4037] text-white rounded-lg transition-all active:scale-95"
-                    title="รีเฟรชข้อมูล"
-                  >
-                    <Icons.Refresh />
-                  </button>
-                </div>
-              </div>
-
-              <div className="grid md:grid-cols-2 gap-4">
-                <div className="bg-white rounded-xl p-4 border border-gray-200"> {/* เปลี่ยน bg และ border เป็น white/gray */}
-                  <h3 className="font-medium text-gray-700 mb-2">สถานะ</h3>
-                  <span className={`px-3 py-2 rounded-full text-sm font-medium inline-flex items-center ${
-                    user.role === 'admin' ? 'bg-purple-100 text-purple-800' : 'bg-gray-100 text-gray-800' // เปลี่ยน bg เป็น gray-100
-                  }`}>
-                    {getRoleDisplay(user.role)}
-                  </span>
-                </div>
-
-                <div className="bg-white rounded-xl p-4 border border-gray-200"> {/* เปลี่ยน bg และ border เป็น white/gray */}
-                  <h3 className="font-medium text-gray-700 mb-2">การใช้งาน</h3>
-                  <span className={`px-3 py-2 rounded-full text-sm font-medium inline-flex items-center ${
-                    user.isactive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                  }`}>
-                    {getStatusDisplay(user.isactive)}
-                  </span>
-                </div>
-              </div>
-
-              <div 
-                className={`bg-gradient-to-r from-[#6d4c41] to-[#3e2723] rounded-2xl p-6 text-white shadow-lg transition-all duration-700 cursor-pointer ${
-                  dataAnimation ? 'scale-105 ring-4 ring-gray-400/50 shadow-2xl' : 'hover:scale-102' // เปลี่ยน ring เป็น gray-400/50
-                }`}
-                onClick={prefetchData}
-              >
+      <div className="flex-1 overflow-auto">
+        <div className="w-full p-2 sm:p-4 lg:p-8">
+          <div className="w-full max-w-2xl mx-auto h-full flex flex-col">
+            <div className="bg-white rounded-2xl sm:rounded-3xl shadow-xl border border-gray-200 overflow-hidden flex-1 flex flex-col">
+              {/* Header Section */}
+              <div className="bg-gradient-to-br from-[#8d6e63] to-[#3e2723] p-4 sm:p-6 lg:p-8 text-white">
                 <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm opacity-90 mb-1">คะแนนสะสม</p>
-                    <p className={`text-3xl font-bold transition-all duration-500 ${
-                      dataAnimation ? 'text-white scale-110' : '' // เปลี่ยน text-amber-100 เป็น text-white
-                    }`}>
-                      {user.userpoint?.toFixed(2)} แต้ม
-                    </p>
+                  <div className="flex items-center space-x-3 sm:space-x-4">
+                    <div className="w-12 h-12 sm:w-14 sm:h-14 lg:w-16 lg:h-16 rounded-full overflow-hidden border-4 border-white/30 bg-white/20 flex items-center justify-center shadow-2xl flex-shrink-0">
+                      {user.pictureurl ? (
+                        <img
+                          src={user.pictureurl}
+                          alt={user.displayName}
+                          className="w-full h-full object-cover"
+                          loading="lazy"
+                          onError={e => {
+                            e.target.style.display = 'none';
+                            e.target.nextSibling.style.display = 'flex';
+                          }}
+                        />
+                      ) : null}
+                      <div className="w-full h-full bg-white/20 flex items-center justify-center text-white text-lg sm:text-xl font-bold" style={{ display: user.pictureurl ? 'none' : 'flex' }}>
+                        {user.displayName?.charAt(0).toUpperCase() || 'U'}
+                      </div>
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <h1 className="text-lg sm:text-xl lg:text-2xl font-bold font-['Kanit',sans-serif] truncate">{user.displayName}</h1>
+                      <p className="text-amber-50 text-xs sm:text-sm  truncate">รหัสผู้ใช้: {user.uid}</p>
+                    </div>
                   </div>
-                  <Icons.Activity />
                 </div>
               </div>
 
-              <div className="bg-white rounded-2xl p-6 border border-gray-200"> {/* เปลี่ยน bg และ border เป็น white/gray */}
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-gradient-to-r from-[#6d4c41] to-[#3e2723] rounded-lg flex items-center justify-center text-white">
-                      <Icons.Phone />
+              {/* Content Section */}
+              <div className="flex-1 p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 overflow-auto">
+                {/* User ID Section */}
+                <div className="bg-white rounded-xl sm:rounded-2xl p-4 sm:p-6 border border-gray-200">
+                  <div className="flex justify-between items-center">
+                    <div className="min-w-0 flex-1">
+                      <h3 className="font-semibold text-gray-700 mb-1 text-sm sm:text-base ml-1">UID</h3>
+                      <code className="text-xs sm:text-sm text-gray-600 font-['Kanit',sans-serif] bg-gray-50 px-2 sm:px-3 py-1 rounded-lg border block truncate">
+                        {user.uid}
+                      </code>
                     </div>
-                    <div>
-                      <h3 className="font-semibold text-gray-700">เบอร์โทรศัพท์</h3>
-                      <p className="text-sm text-gray-500">
-                        {isEditing ? 'กรอกเบอร์โทรศัพท์' : ''}
+                  </div>
+                </div>
+
+                {/* Status and Role Section - Separated cards side by side */}
+                <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                  <div className="bg-white rounded-xl p-3 sm:p-4 border border-gray-200">
+                    <h3 className="font-medium text-gray-700 mb-2 text-sm sm:text-base ml-2">สถานะ</h3>
+                    <span className={`px-2 sm:px-3 py-1 sm:py-2 rounded-full text-xs sm:text-sm font-medium inline-flex items-center w-full justify-center ${
+                      user.role === 'admin' ? 'bg-purple-100 text-purple-800' : 'bg-gray-100 text-gray-800'
+                    }`}>
+                      {getRoleDisplay(user.role)}
+                    </span>
+                  </div>
+
+                  <div className="bg-white rounded-xl p-3 sm:p-4 border border-gray-200">
+                    <h3 className="font-medium text-gray-700 mb-2 text-sm sm:text-base ml-2">การใช้งาน</h3>
+                    <span className={`px-2 sm:px-3 py-1 sm:py-2 rounded-full text-xs sm:text-sm font-medium inline-flex items-center w-full justify-center ${
+                      user.isactive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                    }`}>
+                      {getStatusDisplay(user.isactive)}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Points Section */}
+                <div 
+                  className={`bg-gradient-to-r from-[#6d4c41] to-[#3e2723] rounded-xl sm:rounded-2xl p-4 sm:p-6 text-white shadow-lg transition-all duration-700 cursor-pointer ${
+                    dataAnimation ? 'scale-105 ring-4 ring-gray-400/50 shadow-2xl' : 'hover:scale-102'
+                  }`}
+                  onClick={prefetchData}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm opacity-90 mb-1">คะแนนสะสม</p>
+                      <p className={`text-2xl sm:text-3xl font-bold transition-all duration-500 truncate ${
+                        dataAnimation ? 'text-white scale-110' : ''
+                      }`}>
+                        {user.userpoint?.toFixed(2)} แต้ม
                       </p>
                     </div>
+                    <Icons.Activity />
                   </div>
                 </div>
 
-                {isEditing ? (
-                  <div className="space-y-4">
-                    <input
-                      type="tel"
-                      value={phoneNumber}
-                      onChange={handlePhoneInput}
-                      pattern="[0-9]*"
-                      className="w-full border border-gray-300 rounded-lg px-4 py-3 text-lg focus:outline-none focus:border-[#6d4c41] focus:ring-2 focus:ring-[#8d6e63] transition-all" // เปลี่ยน focus:border และ focus:ring
-                      placeholder="เบอร์โทรศัพท์ (9-10 หลัก)"
-                      disabled={updating}
-                      maxLength="10"
-                      autoFocus
-                    />
-                    <div className="flex gap-3">
-                      <button
-                        onClick={handleUpdatePhoneNumber}
-                        disabled={updating}
-                        className="flex-1 bg-gradient-to-r from-[#6d4c41] to-[#3e2723] hover:from-[#5d4037] hover:to-[#2e1912] disabled:opacity-50 text-white py-3 px-4 rounded-xl font-medium transition-all active:scale-95 flex items-center justify-center gap-2"
-                      >
-                        {updating ? <Icons.Spinner /> : <Icons.Check />}
-                        {updating ? 'กำลังบันทึก...' : 'บันทึก'}
-                      </button>
-                      <button
-                        onClick={handleCancelEdit}
-                        disabled={updating}
-                        className="px-6 bg-gray-500 hover:bg-gray-600 disabled:opacity-50 text-white py-3 rounded-xl font-medium transition-all active:scale-95"
-                      >
-                        ยกเลิก
-                      </button>
+                {/* Phone Number Section */}
+                <div className="bg-white rounded-xl sm:rounded-2xl p-4 sm:p-6 border border-gray-200">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-r from-[#6d4c41] to-[#3e2723] rounded-lg flex items-center justify-center text-white flex-shrink-0">
+                        <Icons.Phone />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <h3 className="font-semibold text-gray-700 text-sm sm:text-base">เบอร์โทรศัพท์</h3>
+                        <p className="text-xs sm:text-sm text-gray-500">
+                          {isEditing ? 'กรอกเบอร์โทรศัพท์' : ''}
+                        </p>
+                      </div>
                     </div>
                   </div>
-                ) : (
-                  <div className="flex items-center justify-between">
-                    <span className="text-lg text-gray-800 font-mono">
-                      {user.phonenumber || 'ไม่ระบุ'}
-                    </span>
-                    {!user.phonenumber && (
-                      <button
-                        onClick={() => setIsEditing(true)}
-                        className="flex items-center gap-2 bg-gradient-to-r from-[#6d4c41] to-[#3e2723] hover:from-[#5d4037] hover:to-[#2e1912] text-white px-4 py-2 rounded-lg font-medium transition-all active:scale-95"
-                      >
-                        <Icons.Edit />
-                        แก้ไข
-                      </button>
-                    )}
-                  </div>
-                )}
-              </div>
 
-              <button
-                onClick={() => debouncedFetchUserData()}
-                disabled={updating || loading}
-                className="w-full bg-gradient-to-r from-[#6d4c41] to-[#3e2723] hover:from-[#5d4037] hover:to-[#2e1912] disabled:opacity-50 text-white py-4 px-4 rounded-xl font-medium transition-all active:scale-95 hover:shadow-lg flex items-center justify-center gap-2"
-              >
-                <div className={`transition-transform ${updating || loading ? 'animate-spin' : 'hover:rotate-180'}`}>
-                  {updating || loading ? <Icons.Spinner /> : <Icons.Refresh />}
+                  {isEditing ? (
+                    <div className="space-y-4">
+                      <input
+                        type="tel"
+                        value={phoneNumber}
+                        onChange={handlePhoneInput}
+                        pattern="[0-9]*"
+                        className="w-full border border-gray-300 rounded-lg px-3 sm:px-4 py-2 sm:py-3 text-base sm:text-lg focus:outline-none focus:border-[#6d4c41] focus:ring-2 focus:ring-[#8d6e63] transition-all"
+                        placeholder="เบอร์โทรศัพท์ (9-10 หลัก)"
+                        disabled={updating}
+                        maxLength="10"
+                        autoFocus
+                      />
+                      <div className="flex flex-col sm:flex-row gap-3">
+                        <button
+                          onClick={handleUpdatePhoneNumber}
+                          disabled={updating}
+                          className="flex-1 bg-gradient-to-r from-[#6d4c41] to-[#3e2723] hover:from-[#5d4037] hover:to-[#2e1912] disabled:opacity-50 text-white py-2 sm:py-3 px-4 rounded-xl font-medium transition-all active:scale-95 flex items-center justify-center gap-2 text-sm sm:text-base"
+                        >
+                          {updating ? <Icons.Spinner /> : <Icons.Check />}
+                          {updating ? 'กำลังบันทึก...' : 'บันทึก'}
+                        </button>
+                        <button
+                          onClick={handleCancelEdit}
+                          disabled={updating}
+                          className="px-4 sm:px-6 bg-gray-500 hover:bg-gray-600 disabled:opacity-50 text-white py-2 sm:py-3 rounded-xl font-medium transition-all active:scale-95 text-sm sm:text-base"
+                        >
+                          ยกเลิก
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between">
+                      <span className="text-base sm:text-lg text-gray-800 font-['Kanit'] truncate flex-1 mr-2 ml-2">
+                        {user.phonenumber || 'เพิ่มเบอร์โทรศัทพ์'}
+                      </span>
+                      {!user.phonenumber && (
+                        <button
+                          onClick={() => setIsEditing(true)}
+                          className="flex items-center gap-2 bg-gradient-to-r from-[#6d4c41] to-[#3e2723] hover:from-[#5d4037] hover:to-[#2e1912] text-white px-3 sm:px-4 py-2 rounded-lg font-medium transition-all active:scale-95 text-sm sm:text-base flex-shrink-0"
+                        >
+                          <Icons.Edit />
+                          <span className="hidden sm:inline">แก้ไข</span>
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
-                {updating || loading ? 'กำลังรีเฟรช...' : 'รีเฟรชทันที'}
-              </button>
+              </div>
             </div>
           </div>
         </div>

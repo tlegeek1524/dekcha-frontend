@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import liff from '@line/liff';
 import DOMPurify from 'dompurify';
 import Cookies from 'js-cookie';
-import QRCode from 'react-qr-code'; // Added import for QR code library
+import QRCode from 'react-qr-code';
 import Navbar from '../navbar';
 import Spinner from '../util/LoadSpinner';
 
@@ -743,7 +743,10 @@ export default function UserMailbox() {
 
   return (
     <ErrorBoundary>
-      <div className="min-h-screen bg-gradient-to-br from-stone-50 via-white to-amber-50/30">
+      <div 
+        className="min-h-screen bg-gradient-to-br from-stone-50 via-white to-amber-50/30"
+        style={{ fontFamily: 'Kanit, sans-serif' }}
+      >
         <Navbar user={user} safeName={safeName} />
         <Toast {...toast} />
 
