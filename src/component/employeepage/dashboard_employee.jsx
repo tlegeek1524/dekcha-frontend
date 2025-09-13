@@ -20,12 +20,6 @@ const TH_MONTHS = [
 ];
 
 // Utility functions
-const toBangkokDate = (dateStr) => {
-  if (!dateStr) return null;
-  const date = new Date(dateStr);
-  return new Date(date.getTime() + 7 * 60 * 60 * 1000);
-};
-
 const formatDateDMY = (dateStr) => {
   if (!dateStr) return "";
   const [y, m, d] = dateStr.split("-");
@@ -34,7 +28,7 @@ const formatDateDMY = (dateStr) => {
 
 const formatThaiDate = (dateStr) => {
   if (!dateStr) return "";
-  const date = toBangkokDate(dateStr);
+  const date = new Date(dateStr);
   const day = date.getDate();
   const month = TH_MONTHS[date.getMonth()];
   const year = date.getFullYear() + 543;
@@ -43,8 +37,7 @@ const formatThaiDate = (dateStr) => {
 
 const formatThaiDateTime = (dateStr, timeStr) => {
   if (!dateStr || !timeStr) return "";
-  // รวม dateStr กับ timeStr แล้วแปลงเป็น Date
-  const dateTime = toBangkokDate(`${dateStr}T${timeStr}`);
+  const dateTime = new Date(`${dateStr}T${timeStr}`);
   const day = dateTime.getDate();
   const month = TH_MONTHS[dateTime.getMonth()];
   const year = dateTime.getFullYear() + 543;
@@ -157,7 +150,8 @@ const useApiData = (url, dependencies = [], transformer) => {
 
 // Main component
 export default function Dashboard() {
-  const today = new Date(Date.now() + 7 * 60 * 60 * 1000).toISOString().split("T")[0];
+  // ไม่ต้องคำนวณวัน/เวลา ใช้ข้อมูลจาก DB ตรงๆ
+  const today = new Date().toISOString().split("T")[0];
 
   const [pointsStart, setPointsStart] = useState(today);
   const [pointsEnd, setPointsEnd] = useState(today);
@@ -173,9 +167,10 @@ export default function Dashboard() {
     return json.data.logs
       .filter((log) => log.status === true)
       .map((log) => {
-        const dateObj = toBangkokDate(log.createdAt);
+        // ใช้วันที่และเวลา จาก DB ตรงๆ
+        const dateObj = new Date(log.createdAt);
         const dateStr = dateObj.toISOString().split("T")[0];
-        const timeStr = dateObj.toTimeString().split(" ")[0].slice(0, 8);
+        const timeStr = dateObj.toISOString().split("T")[1].slice(0, 8);
         return {
           points: log.point,
           date: dateStr,
@@ -197,7 +192,8 @@ export default function Dashboard() {
 
     const grouped = {};
     json.logs.forEach((log) => {
-      const dateObj = toBangkokDate(log.createdat);
+      // ใช้วันที่จาก DB ตรงๆ
+      const dateObj = new Date(log.createdat);
       const dateStr = dateObj.toISOString().split("T")[0];
 
       if (dateStr < couponsStart || dateStr > couponsEnd) return;
@@ -250,7 +246,7 @@ export default function Dashboard() {
   }, [filteredPoints]);
 
   const todayCount = useMemo(() => {
-    const todayStr = new Date(Date.now() + 7 * 60 * 60 * 1000).toISOString().split("T")[0];
+    const todayStr = new Date().toISOString().split("T")[0];
     return filteredPoints.filter((item) => item.date === todayStr).length;
   }, [filteredPoints]);
 
