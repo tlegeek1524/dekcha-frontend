@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo, Suspense } from 'reac
 import { useNavigate } from 'react-router-dom';
 import Cookies from "js-cookie";
 import Toast from '../util/Toast';
-import { ChevronRight, Heart, Tag } from 'lucide-react';
+import { ChevronRight, Heart, Tag, QrCode } from 'lucide-react';
 
 const QuickActions = React.lazy(() => import('../quickaction'));
 
@@ -347,12 +347,73 @@ const FormInput = React.memo(({
   </div>
 ));
 
+// ------------------- QR Scanner Modal -------------------
+const QRScannerModal = ({ open, onClose, onScan }) => {
+  const videoRef = React.useRef(null);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    let stream;
+    if (open && navigator.mediaDevices?.getUserMedia) {
+      navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
+        .then(s => {
+          stream = s;
+          if (videoRef.current) {
+            videoRef.current.srcObject = stream;
+            videoRef.current.play();
+          }
+        })
+        .catch(err => setError('ไม่สามารถเข้าถึงกล้องได้: ' + err.message));
+    }
+    return () => {
+      if (stream) stream.getTracks().forEach(track => track.stop());
+    };
+  }, [open]);
+
+  // BarcodeDetector (Chrome/Edge/Android)
+  useEffect(() => {
+    let interval;
+    if (open && window.BarcodeDetector && videoRef.current) {
+      const detector = new window.BarcodeDetector({ formats: ['qr_code'] });
+      interval = setInterval(async () => {
+        try {
+          const barcodes = await detector.detect(videoRef.current);
+          if (barcodes.length > 0) {
+            onScan(barcodes[0].rawValue);
+            onClose();
+          }
+        } catch (e) {}
+      }, 500);
+    }
+    return () => clearInterval(interval);
+  }, [open, onScan, onClose]);
+
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center">
+      <div className="bg-white rounded-xl shadow-lg p-4 relative w-full max-w-xs">
+        <button className="absolute top-2 right-2 text-gray-500" onClick={onClose}>✕</button>
+        <h2 className="text-lg font-bold mb-2 flex items-center gap-2">
+          <QrCode className="w-5 h-5" /> สแกน QR คูปอง
+        </h2>
+        {error ? (
+          <div className="text-red-600">{error}</div>
+        ) : (
+          <video ref={videoRef} className="w-full rounded bg-black" autoPlay playsInline />
+        )}
+        <p className="text-xs text-gray-500 mt-2">กรุณาอนุญาตการเข้าถึงกล้อง</p>
+      </div>
+    </div>
+  );
+};
+
 // ------------------- Main Component -------------------
 const ManagePoint = () => {
   const navigate = useNavigate();
   const { currentUser, loading } = useAuth(navigate);
   const { toast, showToast, hideToast } = useToast();
   const [currentMode, setCurrentMode] = useState('points');
+  const [qrOpen, setQROpen] = useState(false);
 
   const apiClient = useMemo(() => createApiClient(navigate), [navigate]);
 
@@ -378,6 +439,12 @@ const ManagePoint = () => {
     pointsForm.reset();
     couponForm.reset();
   }, [pointsForm, couponForm]);
+
+  // เมื่อสแกน QR แล้วเติมค่าในช่อง coupon_code
+  const handleQRScan = useCallback((value) => {
+    couponForm.updateField('coupon_code', value.toUpperCase());
+    showToast('สแกนคูปองสำเร็จ', 'success');
+  }, [couponForm, showToast]);
 
   // ------------------- Actions -------------------
   const handleAddPoints = useCallback(async () => {
@@ -491,6 +558,17 @@ const ManagePoint = () => {
             <ModeToggle currentMode={currentMode} onModeChange={handleModeChange} />
 
             <div className="max-w-md mx-auto">
+              {/* ปุ่มสแกน QR เฉพาะโหมดคูปอง */}
+              {currentMode === 'coupon' && (
+                <button
+                  type="button"
+                  onClick={() => setQROpen(true)}
+                  className="mb-4 flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg shadow hover:bg-green-700 transition"
+                >
+                  <QrCode className="w-5 h-5" /> ขออนุญาตเปิดกล้องสแกน QR คูปอง
+                </button>
+              )}
+
               {/* Conditional Form Rendering */}
               {currentMode === 'points' && (
                 <>
@@ -586,6 +664,12 @@ const ManagePoint = () => {
           </div>
         </div>
       </main>
+      {/* QR Scanner Modal */}
+      <QRScannerModal
+        open={qrOpen}
+        onClose={() => setQROpen(false)}
+        onScan={handleQRScan}
+      />
     </div>
   );
 };
