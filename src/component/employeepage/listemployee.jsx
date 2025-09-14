@@ -169,9 +169,18 @@ const ListEmployee = () => {
         headers,
       });
 
+      const contentType = response.headers.get('content-type');
       if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'ลบพนักงานไม่สำเร็จ');
+        if (contentType && contentType.includes('application/json')) {
+          const data = await response.json();
+          throw new Error(data.error || 'ลบพนักงานไม่สำเร็จ');
+        } else {
+          const text = await response.text();
+          if (text.includes('<!DOCTYPE')) {
+            throw new Error('Server returned HTML instead of JSON. อาจไม่มี endpoint นี้ หรือ session หมดอายุ');
+          }
+          throw new Error('ลบพนักงานไม่สำเร็จ');
+        }
       }
       setEmployees((prev) => prev.filter((e) => e.empid !== empid));
     } catch (err) {
@@ -302,13 +311,13 @@ const ListEmployee = () => {
                   <th className="text-left py-4 px-6 font-semibold text-gray-700 text-sm">ชื่อจริง-นามสกุล</th>
                   <th className="text-left py-4 px-6 font-semibold text-gray-700 text-sm">PIN</th>
                   <th className="text-left py-4 px-6 font-semibold text-gray-700 text-sm">บทบาท</th>
-                  <th className="text-left py-4 px-6 font-semibold text-gray-700 text-sm">Action</th> {/* เพิ่มคอลัมน์ลบ */}
+                  <th className="text-left py-4 px-6 font-semibold text-gray-700 text-sm">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {filteredEmployees.length === 0 ? (
                   <tr>
-                    <td colSpan="5" className="text-center py-16">
+                    <td colSpan="6" className="text-center py-16">
                       <Users className="h-12 w-12 text-gray-300 mx-auto mb-4" />
                       <p className="text-gray-500 text-lg">
                         {searchTerm ? 'ไม่พบข้อมูลที่ค้นหา' : 'ไม่มีข้อมูลพนักงาน'}

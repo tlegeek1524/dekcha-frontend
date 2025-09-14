@@ -443,7 +443,7 @@ const ManagePoint = () => {
   // เมื่อสแกน QR แล้วเติมค่าในช่อง coupon_code (คูปอง)
   const handleQRScan = useCallback((value) => {
     if (!isValidCouponQR(value)) {
-      showToast('QR ไม่ถูกต้อง: ต้องเป็นรหัสคูปอง 6 ตัว', 'error');
+      showToast('QR ไม่ถูกต้อง: ต้องเป็นรหัสคูปอง', 'error');
       return;
     }
     couponForm.updateField('coupon_code', value.toUpperCase());
@@ -453,7 +453,7 @@ const ManagePoint = () => {
   // เมื่อสแกน QR แล้วเติมค่าในช่อง customer_info (ลูกค้า)
   const handleQRScanPoints = useCallback((value) => {
     if (!isValidCustomerQR(value)) {
-      showToast('QR ไม่ถูกต้อง: ต้องเป็นรหัสลูกค้า 4 ตัว', 'error');
+      showToast('QR ไม่ถูกต้อง: ต้องเป็นรหัสลูกค้า', 'error');
       return;
     }
     pointsForm.updateField('customer_info', value);
