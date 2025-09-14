@@ -440,14 +440,22 @@ const ManagePoint = () => {
     couponForm.reset();
   }, [pointsForm, couponForm]);
 
-  // เมื่อสแกน QR แล้วเติมค่าในช่อง coupon_code
+  // เมื่อสแกน QR แล้วเติมค่าในช่อง coupon_code (คูปอง)
   const handleQRScan = useCallback((value) => {
+    if (!isValidCouponQR(value)) {
+      showToast('QR ไม่ถูกต้อง: ต้องเป็นรหัสคูปอง 6 ตัว', 'error');
+      return;
+    }
     couponForm.updateField('coupon_code', value.toUpperCase());
     showToast('สแกนคูปองสำเร็จ', 'success');
   }, [couponForm, showToast]);
 
-  // --- เพิ่มฟังก์ชัน handleQRScanPoints ---
+  // เมื่อสแกน QR แล้วเติมค่าในช่อง customer_info (ลูกค้า)
   const handleQRScanPoints = useCallback((value) => {
+    if (!isValidCustomerQR(value)) {
+      showToast('QR ไม่ถูกต้อง: ต้องเป็นรหัสลูกค้า 4 ตัว', 'error');
+      return;
+    }
     pointsForm.updateField('customer_info', value);
     showToast('สแกนข้อมูลลูกค้าสำเร็จ', 'success');
   }, [pointsForm, showToast]);
