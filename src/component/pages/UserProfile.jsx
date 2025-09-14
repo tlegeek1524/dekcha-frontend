@@ -4,9 +4,10 @@ import DOMPurify from 'dompurify';
 import Cookies from 'js-cookie';
 import Navbar from '../navbar'; // Make sure Navbar component is correctly imported
 import Spinner from '../util/LoadSpinner';
+import { QRCodeCanvas } from 'qrcode.react';
+import { TbQrcode } from "react-icons/tb"; // เพิ่มที่ด้านบน
 
 // --- ICONS ---
-// No visual changes, kept for functionality
 const Icons = {
   Error: () => <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 18.5c-.77.833.192 2.5 1.732 2.5z" /></svg>,
   User: () => <svg className="w-10 h-10 text-[#f5f5f5]/80" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>,
@@ -17,10 +18,206 @@ const Icons = {
   Spinner: ({ className = "w-5 h-5" }) => <svg className={`${className} animate-spin`} fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>,
   Activity: () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7" /></svg>,
   Refresh: ({ className = "w-5 h-5" }) => <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>,
-  Chevron: ({ open }) => <svg className={`w-5 h-5 text-stone-400 transition-transform duration-300 ${open ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+  Chevron: ({ open }) => <svg className={`w-5 h-5 text-stone-400 transition-transform duration-300 ${open ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>,
+  QrCode: ({ className = "w-5 h-5" }) => <TbQrcode className={className} color="#3e2723" />,
+  Download: ({ className = "w-4 h-4" }) => <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>,
+  Close: ({ className = "w-5 h-5" }) => <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"/></svg>
 };
 
-// --- ENVIRONMENT & API / HOOKS --- (No changes to logic)
+// --- QR CODE COMPONENTS ---
+const generateQRMatrix = (text, size = 21) => {
+  const matrix = Array(size).fill().map(() => Array(size).fill(0));
+  
+  // Add finder patterns (corners)
+  const addFinderPattern = (x, y) => {
+    for (let i = 0; i < 7; i++) {
+      for (let j = 0; j < 7; j++) {
+        if (x + i < size && y + j < size) {
+          if ((i === 0 || i === 6 || j === 0 || j === 6) || 
+              (i >= 2 && i <= 4 && j >= 2 && j <= 4)) {
+            matrix[x + i][y + j] = 1;
+          }
+        }
+      }
+    }
+  };
+  
+  addFinderPattern(0, 0);
+  addFinderPattern(0, size - 7);
+  addFinderPattern(size - 7, 0);
+  
+  // Add timing patterns
+  for (let i = 8; i < size - 8; i++) {
+    matrix[6][i] = i % 2;
+    matrix[i][6] = i % 2;
+  }
+  
+  // Add data (simplified pattern based on text)
+  let hash = 0;
+  for (let i = 0; i < text.length; i++) {
+    hash = ((hash << 5) - hash + text.charCodeAt(i)) & 0xffffffff;
+  }
+  
+  for (let i = 9; i < size - 9; i++) {
+    for (let j = 1; j < size - 1; j++) {
+      if (matrix[i][j] === 0 && i !== 6 && j !== 6) {
+        matrix[i][j] = (hash >> ((i * j) % 16)) & 1;
+      }
+    }
+  }
+  
+  return matrix;
+};
+
+const QRCodeDisplay = React.memo(function QRCodeDisplay({ data, size = 200, canvasRef }) {
+  return (
+    <QRCodeCanvas
+      ref={canvasRef}
+      value={data || ''}
+      size={size}
+      bgColor="#f5f5f5"
+      fgColor="#3e2723"
+      level="H"
+      includeMargin={true}
+      className="rounded-lg border-4 border-[#8d6e63]/20 bg-white"
+      style={{ display: 'block', margin: '0 auto' }}
+    />
+  );
+});
+
+// Popup Modal Component
+const QRPopup = ({ isOpen, onClose, uid, copyToClipboard }) => {
+  const [isCopied, setIsCopied] = useState(false);
+  const canvasRef = useRef(null);
+
+  const handleCopy = () => {
+    if (!uid) return;
+    copyToClipboard(uid);
+    setIsCopied(true);
+    setTimeout(() => setIsCopied(false), 1200);
+  };
+
+  const downloadQR = () => {
+    if (!canvasRef.current) return;
+    const url = canvasRef.current.toDataURL('image/png');
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `qr_uid_${uid || 'noid'}.png`;
+    a.click();
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <>
+      {/* Backdrop */}
+      <div 
+        className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 transition-all duration-300"
+        onClick={onClose}
+      />
+      
+      {/* Modal */}
+      <div className="fixed inset-0 flex items-center justify-center p-4 z-50">
+        <div 
+          className="bg-white rounded-3xl shadow-2xl border border-[#8d6e63]/30 w-full max-w-sm transform transition-all duration-300 scale-100 opacity-100 pointer-events-auto animate-in zoom-in-95 duration-300"
+          style={{ fontFamily: 'Prompt, sans-serif' }}
+        >
+          {/* Header */}
+          <div className="bg-gradient-to-br from-[#5d4037] to-[#3e2723] px-6 py-4 text-[#f5f5f5] rounded-t-3xl">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 bg-[#f5f5f5]/20 rounded-lg flex items-center justify-center">
+                  <Icons.QrCode />
+                </div>
+                <h2 className="text-lg font-semibold" style={{fontFamily: 'Kanit, sans-serif'}}>
+                  QR Code
+                </h2>
+              </div>
+              <button 
+                onClick={onClose}
+                className="w-8 h-8 hover:bg-[#f5f5f5]/20 rounded-lg flex items-center justify-center transition-colors duration-200"
+              >
+                <Icons.Close />
+              </button>
+            </div>
+          </div>
+          
+          {/* Content */}
+          <div className="p-6">
+            {/* QR Code */}
+            <div className="mb-6 flex justify-center">
+              <QRCodeDisplay data={uid || 'No UID'} size={200} canvasRef={canvasRef} />
+            </div>
+            
+            {/* Info */}
+            <div className="text-center mb-6">
+              <p className="text-sm text-[#5d4037] mb-3">
+                QR Code เพื่อรับแต้มสะสม
+              </p>
+              <div className="bg-[#f5f5f5] rounded-lg p-3 border border-[#8d6e63]/20">
+                <code className="text-xs text-[#3e2723] font-mono break-all">
+                  {uid || 'ไม่มีข้อมูล'}
+                </code>
+              </div>
+            </div>
+            
+            {/* Action Buttons */}
+            <div className="flex gap-3">
+              <button
+                onClick={handleCopy}
+                className="flex-1 flex items-center justify-center gap-2 bg-gradient-to-r from-[#5d4037] to-[#3e2723] hover:from-[#3e2723] hover:to-[#2e1912] text-[#f5f5f5] px-4 py-3 rounded-xl text-sm transition-all duration-300 active:scale-95 hover:shadow-lg disabled:opacity-50"
+                disabled={isCopied}
+              >
+                {isCopied ? <Icons.Check /> : <Icons.Copy />}
+                <span style={{fontFamily: 'Kanit, sans-serif'}}>
+                  {isCopied ? 'คัดลอกแล้ว' : 'คัดลอก'}
+                </span>
+              </button>
+              
+              <button
+                onClick={downloadQR}
+                className="flex-1 flex items-center justify-center gap-2 bg-[#f5f5f5] hover:bg-[#e0e0e0] text-[#3e2723] border-2 border-[#5d4037] px-4 py-3 rounded-xl text-sm transition-all duration-300 active:scale-95 hover:shadow-lg"
+              >
+                <Icons.Download />
+                <span style={{fontFamily: 'Kanit, sans-serif'}}>
+                  ดาวน์โหลด
+                </span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+};
+
+// Hidden QR Button Component
+const HiddenQRButton = ({ uid, copyToClipboard }) => {
+  const [isPopupOpen, setIsPopupOpen] = useState(false);
+  
+  return (
+    <>
+      {/* Hidden Button - เป็นไอคอนเล็กๆ ที่มุมขวาบน */}
+      <button
+        onClick={() => setIsPopupOpen(true)}
+        className="absolute top-4 right-4 w-8 h-8 bg-[#f5f5f5]/80 hover:bg-[#f5f5f5] text-[#5d4037] rounded-lg shadow-lg backdrop-blur-sm border border-[#8d6e63]/20 flex items-center justify-center opacity-70 hover:opacity-100 transition-all duration-300 hover:scale-110 group z-10"
+        title="แสดง QR Code"
+      >
+        <Icons.QrCode className="w-4 h-4 group-hover:scale-110 transition-transform duration-200" />
+      </button>
+      
+      {/* QR Popup */}
+      <QRPopup 
+        isOpen={isPopupOpen}
+        onClose={() => setIsPopupOpen(false)}
+        uid={uid}
+        copyToClipboard={copyToClipboard}
+      />
+    </>
+  );
+};
+
+// --- ENVIRONMENT & API / HOOKS ---
 const LIFF_ID = import.meta.env.VITE_LIFF_ID;
 const API_URL = import.meta.env.VITE_API_URL;
 const cache = new Map();
@@ -30,21 +227,24 @@ const api = async (url, options = {}) => { const controller = new AbortControlle
 const backgroundFetch = async (url, options = {}) => { try { return await api(url, options); } catch (err) { console.warn('Background fetch failed:', err); return null; } };
 const useSmartPolling = (callback, interval = 30000) => { const savedCallback = useRef(); const intervalRef = useRef(); const [isPolling, setIsPolling] = useState(false); useEffect(() => { savedCallback.current = callback; }); const startPolling = useCallback(() => { setIsPolling(true); intervalRef.current = setInterval(() => savedCallback.current?.(), interval); }, [interval]); const stopPolling = useCallback(() => { setIsPolling(false); clearInterval(intervalRef.current); }, []); useEffect(() => { const handleVisibilityChange = () => { if (document.hidden) { stopPolling(); } else { startPolling(); savedCallback.current?.(); } }; document.addEventListener('visibilitychange', handleVisibilityChange); if (!document.hidden) startPolling(); return () => { document.removeEventListener('visibilitychange', handleVisibilityChange); stopPolling(); }; }, [startPolling, stopPolling]); return isPolling; };
 
-// --- UI SUB-COMPONENTS with new color theme ---
+// --- UI SUB-COMPONENTS ---
 
 const Toast = React.memo(({ message, type, show }) => {
   if (!show) return null;
   const styles = {
     success: 'bg-emerald-600',
     error: 'bg-red-600',
-    info: 'bg-[#3e2723]', // Dark Espresso
+    info: 'bg-[#3e2723]',
     update: 'bg-amber-600'
   };
   return (<div className={`fixed top-5 right-5 z-50 ${styles[type]} text-white px-4 py-2.5 rounded-xl shadow-2xl flex items-center gap-3 transition-all duration-300 transform ${show ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'}`}><span className="font-medium text-sm" style={{fontFamily: 'Kanit, sans-serif'}}>{message}</span></div>);
 });
 
-const ProfileHeader = React.memo(({ user, safeName, isUpdating, isPolling, prefetchData }) => (
+const ProfileHeader = React.memo(({ user, safeName, isUpdating, isPolling, prefetchData, copyToClipboard }) => (
   <div className="bg-gradient-to-br from-[#5d4037] to-[#3e2723] px-6 py-8 text-[#f5f5f5] relative">
+    {/* Hidden QR Button */}
+    <HiddenQRButton uid={user.uid} copyToClipboard={copyToClipboard} />
+    
     <div className="text-center relative z-10">
       <div className="mb-4">
         {user.pictureUrl ? (
@@ -128,7 +328,7 @@ export default function UserProfile() {
   const [syncCount, setSyncCount] = useState(0);
   const abortRef = useRef();
   
-  // --- CORE LOGIC --- (No changes to logic)
+  // --- CORE LOGIC ---
   const showToast = useCallback((message, type = 'info') => { setToast({ show: true, message, type }); setTimeout(() => setToast({ show: false, message: '', type: '' }), 3500); }, []);
   const copyToClipboard = (text) => { if (!text) return; navigator.clipboard.writeText(text).then(() => showToast('คัดลอกไปยังคลิปบอร์ดแล้ว', 'success')).catch(() => showToast('ไม่สามารถคัดลอกได้', 'error')); };
   const backgroundSync = useCallback(async (profile) => { if (!profile?.userId) return; try { const token = Cookies.get('authToken'); if (!token) return; const userData = await backgroundFetch(`${API_URL}/users/${profile.userId}`, { headers: { Authorization: `Bearer ${token}` } }); if (userData) { setUserInfo(prev => { const hasChanges = JSON.stringify(prev) !== JSON.stringify({ ...prev, ...userData }); if (hasChanges) { if (userData.userpoint !== prev.userpoint && prev.userpoint > 0) { setPointsAnimation(true); setTimeout(() => setPointsAnimation(false), 1200); const diff = userData.userpoint - prev.userpoint; showToast(`คะแนน ${diff > 0 ? '+' : ''}${diff.toLocaleString()}`, 'update'); } setLastSync(Date.now()); setSyncCount(c => c + 1); setCache(`user_${profile.userId}`, userData); } return hasChanges ? { ...prev, ...userData } : prev; }); } } catch (err) { console.warn('Background sync error:', err); } }, [showToast]);
@@ -162,7 +362,7 @@ export default function UserProfile() {
       <main className="flex-1 p-4 sm:p-6 flex items-start justify-center">
         <div className="w-full max-w-md">
           <div className="bg-white rounded-3xl shadow-2xl border border-[#8d6e63]/30 overflow-hidden">
-            <ProfileHeader user={user} safeName={safeName} isUpdating={isUpdating} isPolling={isPolling} prefetchData={prefetchData} />
+            <ProfileHeader user={user} safeName={safeName} isUpdating={isUpdating} isPolling={isPolling} prefetchData={prefetchData} copyToClipboard={copyToClipboard} />
             <div className="p-4 sm:p-6 space-y-4">
               <PointsCard userpoint={userInfo.userpoint} pointsAnimation={pointsAnimation} prefetchData={prefetchData}/>
               <UserIdAccordion uid={userInfo.uid} copyToClipboard={copyToClipboard} />

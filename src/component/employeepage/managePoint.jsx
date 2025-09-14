@@ -446,6 +446,12 @@ const ManagePoint = () => {
     showToast('สแกนคูปองสำเร็จ', 'success');
   }, [couponForm, showToast]);
 
+  // --- เพิ่มฟังก์ชัน handleQRScanPoints ---
+  const handleQRScanPoints = useCallback((value) => {
+    pointsForm.updateField('customer_info', value);
+    showToast('สแกนข้อมูลลูกค้าสำเร็จ', 'success');
+  }, [pointsForm, showToast]);
+
   // ------------------- Actions -------------------
   const handleAddPoints = useCallback(async () => {
     if (pointsForm.loading || !pointsForm.validate()) return;
@@ -558,14 +564,23 @@ const ManagePoint = () => {
             <ModeToggle currentMode={currentMode} onModeChange={handleModeChange} />
 
             <div className="max-w-md mx-auto">
-              {/* ปุ่มสแกน QR เฉพาะโหมดคูปอง */}
+              {/* ปุ่มสแกน QR ทั้งสองโหมด */}
               {currentMode === 'coupon' && (
                 <button
                   type="button"
-                  onClick={() => setQROpen(true)}
+                  onClick={() => setQROpen('coupon')}
                   className="mb-4 flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg shadow hover:bg-green-700 transition"
                 >
                   <QrCode className="w-5 h-5" /> ขออนุญาตเปิดกล้องสแกน QR คูปอง
+                </button>
+              )}
+              {currentMode === 'points' && (
+                <button
+                  type="button"
+                  onClick={() => setQROpen('points')}
+                  className="mb-4 flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg shadow hover:bg-indigo-700 transition"
+                >
+                  <QrCode className="w-5 h-5" /> ขออนุญาตเปิดกล้องสแกน QR ลูกค้า
                 </button>
               )}
 
@@ -666,9 +681,9 @@ const ManagePoint = () => {
       </main>
       {/* QR Scanner Modal */}
       <QRScannerModal
-        open={qrOpen}
+        open={!!qrOpen}
         onClose={() => setQROpen(false)}
-        onScan={handleQRScan}
+        onScan={qrOpen === 'coupon' ? handleQRScan : handleQRScanPoints}
       />
     </div>
   );

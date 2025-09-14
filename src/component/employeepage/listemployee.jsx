@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { Users, Phone, Calendar, Star, Search, Filter, RefreshCw, AlertCircle, Eye, EyeOff } from 'lucide-react';
+import { Users, Phone, Calendar, Star, Search, Filter, RefreshCw, AlertCircle, Eye, EyeOff, Trash2 } from 'lucide-react';
 import QuickActions from "../quickaction";
 import { useNavigate } from "react-router-dom";
 
@@ -154,6 +154,33 @@ const ListEmployee = () => {
     });
   };
 
+  // ฟังก์ชันลบพนักงาน
+  const handleDeleteEmployee = async (empid) => {
+    if (!window.confirm('คุณต้องการลบบัญชีพนักงานนี้หรือไม่?')) return;
+    try {
+      setLoading(true);
+      setError(null);
+      const authToken = getCookie('AuthToken');
+      const apiUrl = `${API_URL.endsWith('/api') ? API_URL : `${API_URL}/api`}/delete/employee/${empid}`;
+      const headers = createHeaders(authToken);
+
+      const response = await fetch(apiUrl, {
+        method: "DELETE",
+        headers,
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'ลบพนักงานไม่สำเร็จ');
+      }
+      setEmployees((prev) => prev.filter((e) => e.empid !== empid));
+    } catch (err) {
+      setError(err.message || 'เกิดข้อผิดพลาดในการลบ');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -275,6 +302,7 @@ const ListEmployee = () => {
                   <th className="text-left py-4 px-6 font-semibold text-gray-700 text-sm">ชื่อจริง-นามสกุล</th>
                   <th className="text-left py-4 px-6 font-semibold text-gray-700 text-sm">PIN</th>
                   <th className="text-left py-4 px-6 font-semibold text-gray-700 text-sm">บทบาท</th>
+                  <th className="text-left py-4 px-6 font-semibold text-gray-700 text-sm">Action</th> {/* เพิ่มคอลัมน์ลบ */}
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -350,6 +378,17 @@ const ListEmployee = () => {
                           {employee.role === 'admin' ? 'แอดมิน' : 'พนักงาน'}
                         </span>
                       </td>
+                      <td className="py-4 px-6">
+                        {employee.role !== 'admin' && (
+                          <button
+                            onClick={() => handleDeleteEmployee(employee.empid)}
+                            className="text-red-600 hover:bg-red-50 p-2 rounded-full transition-colors"
+                            title="ลบบัญชีพนักงาน"
+                          >
+                            <Trash2 className="h-5 w-5" />
+                          </button>
+                        )}
+                      </td>
                     </tr>
                   ))
                 )}
@@ -393,12 +432,23 @@ const ListEmployee = () => {
                         </div>
                       </div>
 
-                      <span className={`px-3 py-1.5 rounded-full text-xs font-semibold ${employee.role === 'admin'
-                          ? 'bg-gradient-to-r from-purple-100 to-purple-200 text-purple-800 border border-purple-200'
-                          : 'bg-gradient-to-r from-emerald-100 to-emerald-200 text-emerald-800 border border-emerald-200'
-                        }`}>
-                        {employee.role === 'admin' ? 'แอดมิน' : 'พนักงาน'}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className={`px-3 py-1.5 rounded-full text-xs font-semibold ${employee.role === 'admin'
+                            ? 'bg-gradient-to-r from-purple-100 to-purple-200 text-purple-800 border border-purple-200'
+                            : 'bg-gradient-to-r from-emerald-100 to-emerald-200 text-emerald-800 border border-emerald-200'
+                          }`}>
+                          {employee.role === 'admin' ? 'แอดมิน' : 'พนักงาน'}
+                        </span>
+                        {employee.role !== 'admin' && (
+                          <button
+                            onClick={() => handleDeleteEmployee(employee.empid)}
+                            className="ml-2 text-red-600 hover:bg-red-50 p-2 rounded-full transition-colors"
+                            title="ลบบัญชีพนักงาน"
+                          >
+                            <Trash2 className="h-5 w-5" />
+                          </button>
+                        )}
+                      </div>
                     </div>
 
                     {/* Information Grid */}
