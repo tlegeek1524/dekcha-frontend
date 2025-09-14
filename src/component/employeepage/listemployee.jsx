@@ -161,7 +161,7 @@ const ListEmployee = () => {
       setLoading(true);
       setError(null);
       const authToken = getCookie('AuthToken');
-      const apiUrl = `${API_URL.endsWith('/api') ? API_URL : `${API_URL}/api`}/delete/employee/${empid}`;
+      const apiUrl = `${API_URL.endsWith('/api') ? API_URL : `${API_URL}/api`}/auth/delete/employee/${empid}`;
       const headers = createHeaders(authToken);
 
       const response = await fetch(apiUrl, {
