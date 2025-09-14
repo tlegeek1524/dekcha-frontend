@@ -698,3 +698,7 @@ const ManagePoint = () => {
 };
 
 export default ManagePoint;
+
+// ตรวจสอบรูปแบบ QR ลูกค้า 4 ตัว, คูปอง 6 ตัว
+const isValidCustomerQR = (value) => typeof value === 'string' && value.length === 4;
+const isValidCouponQR = (value) => typeof value === 'string' && value.length === 6;
