@@ -294,7 +294,7 @@ const ListCustomer = () => {
         {/* Customer Table */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mb-4 sm:mb-6">
           {/* Desktop Table */}
-          <div className="hidden md:block overflow-x-auto">
+ <div className="hidden md:block overflow-x-auto">
             <table className="w-full">
               <thead className="bg-gray-50 border-b border-gray-100">
                 <tr>
@@ -302,7 +302,6 @@ const ListCustomer = () => {
                   <th className="text-left py-4 px-6 font-semibold text-gray-700 text-sm">รหัสลูกค้า</th>
                   <th className="text-left py-4 px-6 font-semibold text-gray-700 text-sm">เบอร์โทร</th>
                   <th className="text-left py-4 px-6 font-semibold text-gray-700 text-sm">แต้ม</th>
-                  {/* <th className="text-left py-4 px-6 font-semibold text-gray-700 text-sm">สถานะ</th> */}
                   <th className="text-left py-4 px-6 font-semibold text-gray-700 text-sm">สร้างเมื่อ</th>
                 </tr>
               </thead>
@@ -331,31 +330,30 @@ const ListCustomer = () => {
                         </div>
                       </td>
                       <td className="py-4 px-6">
-                        <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">
+                        <span className="bg-slate-100 text-slate-800 px-3 py-1 rounded-full text-sm font-medium border border-slate-200">
                           {customer.uid || '-'}
                         </span>
                       </td>
                       <td className="py-4 px-6">
                         {customer.phonenumber ? (
-                          <div className="flex items-center gap-2">
-                            <Phone className="h-4 w-4 text-gray-400" />
-                            <span className="text-gray-700">{customer.phonenumber}</span>
+                          <div className="flex items-center gap-2 bg-indigo-50 px-3 py-1.5 rounded-lg border border-indigo-200">
+                            <Phone className="h-4 w-4 text-indigo-600" />
+                            <span className="text-indigo-800 font-medium">{customer.phonenumber}</span>
                           </div>
                         ) : (
                           <span className="text-gray-400">-</span>
                         )}
                       </td>
                       <td className="py-4 px-6">
-                        <div className="flex items-center gap-2">
-                          <Star className="h-4 w-4 text-amber-500" />
-                          <span className="font-medium text-gray-800">
+                        <div className="flex items-center gap-2 bg-amber-50 px-3 py-1.5 rounded-lg border border-amber-200">
+                          <Star className="h-4 w-4 text-amber-600" />
+                          <span className="font-bold text-amber-800">
                             {(customer.userpoint || 0).toFixed(1)}
                           </span>
                         </div>
                       </td>
-                      {/* สถานะถูกลบออก */}
                       <td className="py-4 px-6">
-                        <div className="text-sm text-gray-600">
+                        <div className="text-sm text-gray-600 bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-200">
                           {formatDate(customer.createdat)}
                         </div>
                       </td>
@@ -367,63 +365,102 @@ const ListCustomer = () => {
           </div>
 
           {/* Mobile Card Layout */}
-          <div className="md:hidden">
+<div className="md:hidden">
             {filteredCustomers.length === 0 ? (
-              <div className="text-center py-16 px-4">
-                <Users className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                <p className="text-gray-500">
+              <div className="flex flex-col items-center justify-center py-20 px-6">
+                <div className="bg-gray-50 rounded-full p-6 mb-6">
+                  <Users className="h-12 w-12 text-gray-400" />
+                </div>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">
                   {searchTerm ? 'ไม่พบข้อมูลที่ค้นหา' : 'ไม่มีข้อมูลลูกค้า'}
+                </h3>
+                <p className="text-gray-500 text-center">
+                  {searchTerm ? 'กรุณาลองใช้คำค้นหาอื่น' : 'เริ่มเพิ่มลูกค้าคนแรก'}
                 </p>
               </div>
             ) : (
-              <div className="divide-y divide-gray-100">
+              <div className="space-y-3 p-4">
                 {filteredCustomers.map((customer) => (
-                  <div key={customer.id} className="p-4 hover:bg-gray-50 transition-colors duration-150">
-                    <div className="flex items-start gap-3">
-                      <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-semibold flex-shrink-0">
-                        {customer.name?.charAt(0)?.toUpperCase() || '?'}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-start justify-between mb-2">
-                          <div>
-                            <h3 className="font-medium text-gray-900 text-base">{customer.name || 'ไม่ระบุชื่อ'}</h3>
-                            <p className="text-sm text-gray-500">ID: {customer.id}</p>
-                          </div>
-                          {/* สถานะถูกลบออก */}
+                  <div 
+                    key={customer.id} 
+                    className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 hover:shadow-md hover:border-gray-200 transition-all duration-200"
+                  >
+                    {/* Header Section */}
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-14 h-14 bg-gradient-to-br from-blue-500 via-blue-600 to-indigo-600 rounded-2xl flex items-center justify-center text-white font-bold text-lg shadow-sm">
+                          {customer.name?.charAt(0)?.toUpperCase() || '?'}
                         </div>
-                        
-                        <div className="grid grid-cols-2 gap-3 text-sm">
-                          <div>
-                            <p className="text-gray-500 font-medium">รหัสลูกค้า</p>
-                            <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-xs font-medium">
+                        <div>
+                          <h3 className="text-lg font-semibold text-gray-900 leading-tight">
+                            {customer.name || 'ไม่ระบุชื่อ'}
+                          </h3>
+                          <p className="text-sm text-gray-500 font-medium">
+                            ID: {customer.id}
+                          </p>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center gap-1 bg-gradient-to-r from-amber-100 to-amber-200 px-3 py-1.5 rounded-full border border-amber-200">
+                        <Star className="h-4 w-4 text-amber-600" />
+                        <span className="text-amber-800 font-bold text-sm">
+                          {(customer.userpoint || 0).toFixed(1)}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Information Grid */}
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-2 gap-3">
+                        {/* Customer ID */}
+                        <div className="bg-slate-50 rounded-xl p-3 border border-slate-200">
+                          <div className="flex items-center gap-2 mb-2">
+                            <div className="w-1.5 h-1.5 bg-slate-600 rounded-full"></div>
+                            <span className="text-xs font-semibold text-slate-700 uppercase tracking-wide">
+                              รหัสลูกค้า
+                            </span>
+                          </div>
+                          <div className="bg-white rounded-lg px-3 py-2 border border-slate-300 ml-3.5 shadow-sm">
+                            <span className="text-sm font-bold text-slate-800">
                               {customer.uid || '-'}
                             </span>
                           </div>
-                          <div>
-                            <p className="text-gray-500 font-medium">แต้ม</p>
-                            <div className="flex items-center gap-1">
-                              <Star className="h-3 w-3 text-amber-500" />
-                              <span className="text-gray-900 font-medium">
-                                {(customer.userpoint || 0).toFixed(1)}
-                              </span>
-                            </div>
+                        </div>
+
+                        {/* Phone Number */}
+                        <div className="bg-indigo-50 rounded-xl p-3 border border-indigo-200">
+                          <div className="flex items-center gap-2 mb-2">
+                            <div className="w-1.5 h-1.5 bg-indigo-600 rounded-full"></div>
+                            <span className="text-xs font-semibold text-indigo-700 uppercase tracking-wide">
+                              เบอร์โทร
+                            </span>
                           </div>
-                          <div className="col-span-2">
-                            <p className="text-gray-500 font-medium">เบอร์โทร</p>
+                          <div className="bg-white rounded-lg px-3 py-2 border border-indigo-300 ml-3.5 shadow-sm">
                             {customer.phonenumber ? (
-                              <div className="flex items-center gap-1">
-                                <Phone className="h-3 w-3 text-gray-400" />
-                                <span className="text-gray-700">{customer.phonenumber}</span>
+                              <div className="flex items-center gap-2">
+                                <Phone className="h-3.5 w-3.5 text-indigo-600" />
+                                <span className="text-sm font-medium text-indigo-800">
+                                  {customer.phonenumber}
+                                </span>
                               </div>
                             ) : (
-                              <span className="text-gray-400">-</span>
+                              <span className="text-sm text-gray-400">-</span>
                             )}
                           </div>
-                          <div className="col-span-2">
-                            <p className="text-gray-500 font-medium">สร้างเมื่อ</p>
-                            <p className="text-gray-700 text-xs">{formatDate(customer.createdat)}</p>
-                          </div>
                         </div>
+                      </div>
+
+                      {/* Created Date */}
+                      <div className="bg-gray-50 rounded-xl p-3">
+                        <div className="flex items-center gap-2 mb-1">
+                          <div className="w-1.5 h-1.5 bg-gray-500 rounded-full"></div>
+                          <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide">
+                            วันที่สร้างบัญชี
+                          </span>
+                        </div>
+                        <p className="text-sm font-medium text-gray-900 ml-3.5">
+                          {formatDate(customer.createdat)}
+                        </p>
                       </div>
                     </div>
                   </div>

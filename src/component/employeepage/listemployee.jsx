@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Users, Phone, Calendar, Star, Search, Filter, RefreshCw, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import QuickActions from "../quickaction";
+import { useNavigate } from "react-router-dom";
 
 const ListEmployee = () => {
   const API_URL = import.meta.env.VITE_API_URL;
@@ -10,6 +11,7 @@ const ListEmployee = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterRole, setFilterRole] = useState('all');
   const [visiblePins, setVisiblePins] = useState(new Set());
+  const navigate = useNavigate();
 
   const getCookie = useCallback((name) => {
     const value = `; ${document.cookie}`;
@@ -24,7 +26,7 @@ const ListEmployee = () => {
     if (!API_URL) {
       throw new Error('VITE_API_URL is not configured in environment variables');
     }
-    
+
     const baseUrl = API_URL.endsWith('/api') ? API_URL : `${API_URL}/api`;
     return `${baseUrl}/auth/get/employees`;
   }, [API_URL]);
@@ -32,12 +34,12 @@ const ListEmployee = () => {
   const createHeaders = useCallback((authToken) => {
     const headers = new Headers();
     headers.append("Content-Type", "application/json");
-    
+
     if (authToken) {
       headers.append("Authorization", `Bearer ${authToken}`);
       headers.append("x-auth-token", authToken);
     }
-    
+
     return headers;
   }, []);
 
@@ -87,7 +89,7 @@ const ListEmployee = () => {
       const data = await response.json();
 
       if (data.status === 'OK') {
-        const currentUserEmpid = getCookie('empid');  
+        const currentUserEmpid = getCookie('empid');
         if (Array.isArray(data.employees)) {
           const filtered = data.employees.filter(employee => {
             return String(employee.empid) !== String(currentUserEmpid);
@@ -115,24 +117,24 @@ const ListEmployee = () => {
 
   const filteredEmployees = useMemo(() => {
     return employees.filter(employee => {
-      const matchesSearch = 
+      const matchesSearch =
         employee.name_emp?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         employee.empid?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         employee.firstname_emp?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         employee.lastname_emp?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         employee.pincode_emp?.includes(searchTerm);
-      
-      const matchesFilter = 
-        filterRole === 'all' || 
+
+      const matchesFilter =
+        filterRole === 'all' ||
         employee.role === filterRole;
-      
+
       return matchesSearch && matchesFilter;
     });
   }, [employees, searchTerm, filterRole]);
 
   const stats = useMemo(() => {
     const totalEmployees = employees.length;
-    
+
     return { totalEmployees };
   }, [employees]);
 
@@ -170,7 +172,7 @@ const ListEmployee = () => {
           <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
           <h2 className="text-2xl font-bold text-gray-800 mb-2">เกิดข้อผิดพลาด</h2>
           <p className="text-gray-600 mb-6 text-sm">{error}</p>
-          <button 
+          <button
             onClick={fetchEmployees}
             className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition-colors duration-200 font-medium"
           >
@@ -191,18 +193,27 @@ const ListEmployee = () => {
                 <Users className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600" />
               </div>
               <div>
-                <h1 className="text-xl sm:text-2xl font-bold text-gray-900">รายชื่อพนักงาน</h1>
-                <p className="text-sm sm:text-base text-gray-600 mt-0.5">จัดการข้อมูลพนักงานทั้งหมด</p>
+                <h1 className="text-lg sm:text-2xl font-bold text-gray-900">รายชื่อพนักงาน</h1>
+                <p className="text-xs sm:text-base text-gray-600 mt-0.5">จัดการข้อมูลพนักงานทั้งหมด</p>
               </div>
             </div>
-            <button 
-              onClick={fetchEmployees}
-              disabled={loading}
-              className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white px-4 py-2.5 rounded-lg transition-colors duration-200 font-medium shadow-sm w-full sm:w-auto"
-            >
-              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-              รีเฟรช
-            </button>
+            <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+              <button
+                onClick={() => navigate('/auth/register')}
+                className="flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2.5 rounded-lg transition-colors duration-200 font-medium shadow-sm w-full sm:w-auto"
+              >
+                <span className="font-bold text-lg">+</span>
+                เพิ่มพนักงาน
+              </button>
+              <button
+                onClick={fetchEmployees}
+                disabled={loading}
+                className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white px-4 py-2.5 rounded-lg transition-colors duration-200 font-medium shadow-sm w-full sm:w-auto"
+              >
+                <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                รีเฟรช
+              </button>
+            </div>
           </div>
         </div>
 
@@ -255,7 +266,7 @@ const ListEmployee = () => {
         </div>
 
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mb-4 sm:mb-6">
-          <div className="hidden md:block overflow-x-auto">
+<div className="hidden md:block overflow-x-auto">
             <table className="w-full">
               <thead className="bg-gray-50 border-b border-gray-100">
                 <tr>
@@ -291,7 +302,7 @@ const ListEmployee = () => {
                         </div>
                       </td>
                       <td className="py-4 px-6">
-                        <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">
+                        <span className="bg-slate-100 text-slate-800 px-3 py-1 rounded-full text-sm font-medium border border-slate-200">
                           {employee.empid || '-'}
                         </span>
                       </td>
@@ -304,12 +315,12 @@ const ListEmployee = () => {
                         <div className="relative group">
                           {visiblePins.has(employee.empid) ? (
                             <div className="flex items-center gap-2">
-                              <span className="font-medium text-gray-800 bg-green-50 px-3 py-1 rounded-lg border border-green-200">
+                              <span className="font-medium text-emerald-800 bg-emerald-50 px-3 py-1 rounded-lg border border-emerald-300">
                                 {employee.pincode_emp || '-'}
                               </span>
                               <button
                                 onClick={() => togglePinVisibility(employee.empid)}
-                                className="p-1 rounded-full hover:bg-gray-100 text-gray-500 hover:text-red-600 transition-all"
+                                className="p-1 rounded-full hover:bg-emerald-100 text-emerald-500 hover:text-emerald-700 transition-all"
                                 title="ซ่อน PIN"
                               >
                                 <EyeOff className="h-4 w-4" />
@@ -318,7 +329,7 @@ const ListEmployee = () => {
                           ) : (
                             <button
                               onClick={() => togglePinVisibility(employee.empid)}
-                              className="flex items-center gap-3 bg-gray-100 hover:bg-blue-50 px-3 py-2 rounded-lg border border-gray-200 hover:border-blue-300 transition-all group-hover:shadow-sm"
+                              className="flex items-center gap-3 bg-gray-100 hover:bg-emerald-50 px-3 py-2 rounded-lg border border-gray-200 hover:border-emerald-300 transition-all group-hover:shadow-sm"
                               title="คลิกเพื่อดู PIN"
                             >
                               <div className="flex">
@@ -326,17 +337,16 @@ const ListEmployee = () => {
                                   <div key={i} className="w-2 h-2 bg-gray-400 rounded-full mx-0.5"></div>
                                 ))}
                               </div>
-                              <Eye className="h-4 w-4 text-gray-500 group-hover:text-blue-600 transition-colors" />
+                              <Eye className="h-4 w-4 text-gray-500 group-hover:text-emerald-600 transition-colors" />
                             </button>
                           )}
                         </div>
                       </td>
                       <td className="py-4 px-6">
-                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                          employee.role === 'admin' 
-                            ? 'bg-purple-100 text-purple-800' 
-                            : 'bg-green-100 text-green-800'
-                        }`}>
+                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${employee.role === 'admin'
+                            ? 'bg-purple-100 text-purple-800 border border-purple-200'
+                            : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                          }`}>
                           {employee.role === 'admin' ? 'แอดมิน' : 'พนักงาน'}
                         </span>
                       </td>
@@ -349,64 +359,106 @@ const ListEmployee = () => {
 
           <div className="md:hidden">
             {filteredEmployees.length === 0 ? (
-              <div className="text-center py-16 px-4">
-                <Users className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                <p className="text-gray-500">
+              <div className="flex flex-col items-center justify-center py-20 px-6">
+                <div className="bg-gray-50 rounded-full p-6 mb-6">
+                  <Users className="h-12 w-12 text-gray-400" />
+                </div>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">
                   {searchTerm ? 'ไม่พบข้อมูลที่ค้นหา' : 'ไม่มีข้อมูลพนักงาน'}
+                </h3>
+                <p className="text-gray-500 text-center">
+                  {searchTerm ? 'กรุณาลองใช้คำค้นหาอื่น' : 'เริ่มเพิ่มพนักงานคนแรก'}
                 </p>
               </div>
             ) : (
-              <div className="divide-y divide-gray-100">
+              <div className="space-y-3 p-4">
                 {filteredEmployees.map((employee) => (
-                  <div key={employee.empid} className="p-4 hover:bg-gray-50 transition-colors duration-150">
-                    <div className="flex items-start gap-3">
-                      <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-semibold flex-shrink-0">
-                        {employee.name_emp?.charAt(0)?.toUpperCase() || '?'}
+                  <div
+                    key={employee.empid}
+                    className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 hover:shadow-md hover:border-gray-200 transition-all duration-200"
+                  >
+                    {/* Header Section */}
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-14 h-14 bg-gradient-to-br from-blue-500 via-blue-600 to-indigo-600 rounded-2xl flex items-center justify-center text-white font-bold text-lg shadow-sm">
+                          {employee.name_emp?.charAt(0)?.toUpperCase() || '?'}
+                        </div>
+                        <div>
+                          <h3 className="text-lg font-semibold text-gray-900 leading-tight">
+                            {employee.name_emp || 'ไม่ระบุชื่อ'}
+                          </h3>
+                          <p className="text-sm text-gray-500 font-medium">
+                            ID: {employee.empid}
+                          </p>
+                        </div>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-start justify-between mb-2">
-                          <div>
-                            <h3 className="font-medium text-gray-900 text-base">{employee.name_emp || 'ไม่ระบุชื่อ'}</h3>
-                            <p className="text-sm text-gray-500">EMPID: {employee.empid}</p>
-                          </div>
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium flex-shrink-0 ${
-                            employee.role === 'admin' 
-                              ? 'bg-purple-100 text-purple-800' 
-                              : 'bg-green-100 text-green-800'
-                          }`}>
-                            {employee.role === 'admin' ? 'แอดมิน' : 'พนักงาน'}
+
+                      <span className={`px-3 py-1.5 rounded-full text-xs font-semibold ${employee.role === 'admin'
+                          ? 'bg-gradient-to-r from-purple-100 to-purple-200 text-purple-800 border border-purple-200'
+                          : 'bg-gradient-to-r from-emerald-100 to-emerald-200 text-emerald-800 border border-emerald-200'
+                        }`}>
+                        {employee.role === 'admin' ? 'แอดมิน' : 'พนักงาน'}
+                      </span>
+                    </div>
+
+                    {/* Information Grid */}
+                    <div className="space-y-4">
+                      {/* Full Name */}
+                      <div className="bg-gray-50 rounded-xl p-3">
+                        <div className="flex items-center gap-2 mb-1">
+                          <div className="w-1.5 h-1.5 bg-blue-500 rounded-full"></div>
+                          <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide">
+                            ชื่อจริง-นามสกุล
                           </span>
                         </div>
-                        
-                        <div className="grid grid-cols-2 gap-3 text-sm">
-                          <div>
-                            <p className="text-gray-500 font-medium">รหัสพนักงาน</p>
-                            <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-xs font-medium">
+                        <p className="text-sm font-medium text-gray-900 ml-3.5">
+                          {employee.firstname_emp} {employee.lastname_emp}
+                        </p>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        {/* Employee ID */}
+                        <div className="bg-slate-50 rounded-xl p-3 border border-slate-200">
+                          <div className="flex items-center gap-2 mb-2">
+                            <div className="w-1.5 h-1.5 bg-slate-600 rounded-full"></div>
+                            <span className="text-xs font-semibold text-slate-700 uppercase tracking-wide">
+                              รหัสพนักงาน
+                            </span>
+                          </div>
+                          <div className="bg-white rounded-lg px-3 py-2 border border-slate-300 ml-3.5 shadow-sm">
+                            <span className="text-sm font-bold text-slate-800">
                               {employee.empid || '-'}
                             </span>
                           </div>
-                          <div>
-                            <p className="text-gray-500 font-medium">PIN</p>
-                            <button
-                              onClick={() => togglePinVisibility(employee.empid)}
-                              className="flex items-center gap-2 hover:bg-gray-100 px-2 py-1 rounded transition-colors"
-                              title={visiblePins.has(employee.empid) ? "คลิกเพื่อซ่อน PIN" : "คลิกเพื่อดู PIN"}
-                            >
-                              <span className={`text-gray-900 font-medium ${
-                                visiblePins.has(employee.empid) ? '' : 'filter blur-sm'
-                              }`}>
-                                {employee.pincode_emp || '-'}
-                              </span>
-                              {!visiblePins.has(employee.empid) && (
-                                <span className="text-xs text-gray-500">คลิก</span>
-                              )}
-                            </button>
-                          </div>
-                          <div className="col-span-2">
-                            <p className="text-gray-500 font-medium">ชื่อจริง-นามสกุล</p>
-                            <span className="text-gray-700">
-                              {employee.firstname_emp} {employee.lastname_emp}
+                        </div>
+
+                        {/* PIN Code */}
+                        <div className="bg-emerald-50 rounded-xl p-3 border border-emerald-200">
+                          <div className="flex items-center gap-2 mb-2">
+                            <div className="w-1.5 h-1.5 bg-emerald-600 rounded-full"></div>
+                            <span className="text-xs font-semibold text-emerald-700 uppercase tracking-wide">
+                              รหัส PIN
                             </span>
+                          </div>
+                          <div className="bg-white rounded-lg px-3 py-2 border border-emerald-300 ml-3.5 shadow-sm">
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm font-bold text-emerald-800 font-mono tracking-wider">
+                                {visiblePins.has(employee.empid)
+                                  ? (employee.pincode_emp || '-')
+                                  : (employee.pincode_emp ? '••••' : '-')}
+                              </span>
+                              <button
+                                onClick={() => togglePinVisibility(employee.empid)}
+                                className="p-1.5 rounded-lg hover:bg-emerald-100 text-emerald-600 hover:text-emerald-700 transition-all duration-150 active:scale-95"
+                                title={visiblePins.has(employee.empid) ? "ซ่อน PIN" : "ดู PIN"}
+                              >
+                                {visiblePins.has(employee.empid) ? (
+                                  <EyeOff className="h-4 w-4" />
+                                ) : (
+                                  <Eye className="h-4 w-4" />
+                                )}
+                              </button>
+                            </div>
                           </div>
                         </div>
                       </div>

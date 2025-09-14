@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
+import { useNavigate } from "react-router-dom"; // เพิ่มบรรทัดนี้
 import QuickActions from "../quickaction";
 import {
   LineChart,
@@ -150,6 +151,20 @@ const useApiData = (url, dependencies = [], transformer) => {
 
 // Main component
 export default function Dashboard() {
+  const navigate = useNavigate();
+
+  // Redirect ถ้าไม่มี AuthToken ทันที (ก่อน render อื่นๆ)
+  useEffect(() => {
+    const authToken = getCookie("AuthToken");
+    if (!authToken) {
+      navigate("/auth/login", { replace: true });
+    }
+  }, [navigate]);
+
+  // ถ้าไม่มี AuthToken ให้ return null เพื่อไม่ render อะไรเลย
+  const authToken = getCookie("AuthToken");
+  if (!authToken) return null;
+
   // ไม่ต้องคำนวณวัน/เวลา ใช้ข้อมูลจาก DB ตรงๆ
   const today = new Date().toISOString().split("T")[0];
 
