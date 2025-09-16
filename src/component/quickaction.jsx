@@ -585,6 +585,7 @@ const AuthManager = {
         sessionStorage.removeItem('AuthToken');
         this.clearPinToken();
         CacheManager.clear();
+        CookieManager.remove('AuthToken'); // <-- เพิ่มโค้ดบรรทัดนี้
     }
 };
 
