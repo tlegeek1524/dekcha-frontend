@@ -585,7 +585,7 @@ const AuthManager = {
         sessionStorage.removeItem('AuthToken');
         this.clearPinToken();
         CacheManager.clear();
-        CookieManager.remove('AuthToken'); // <-- เพิ่มโค้ดบรรทัดนี้
+        CookieManager.remove('AuthToken');
     }
 };
 
@@ -663,10 +663,14 @@ const QuickActions = ({ customActions = [], className = "", showHeader = false, 
         type: 'success'
     });
 
-    // ใช้ role แบบ instant - ไม่มี loading state
     const [userRole, setUserRole] = useState(() => RoleChecker.getCurrentUserRole());
+    const currentPath = window.location.pathname;
 
-    // Background refresh role (ไม่บล็อก UI)
+    const isCurrentPath = (url) => {
+        if (!url) return false;
+        return currentPath === url;
+    };
+
     useEffect(() => {
         let isMounted = true;
 
@@ -681,7 +685,6 @@ const QuickActions = ({ customActions = [], className = "", showHeader = false, 
             }
         };
 
-        // รอ 100ms แล้วค่อย refresh ในพื้นหลัง
         const timer = setTimeout(backgroundRefresh, 100);
 
         return () => {
@@ -709,6 +712,7 @@ const QuickActions = ({ customActions = [], className = "", showHeader = false, 
                 id: 'Home',
                 title: 'หน้าหลัก',
                 subtitle: 'กลับไปยังหน้าหลัก',
+                url: '/auth/employee', // <-- เพิ่ม url
                 icon: (
                     <svg className="w-8 h-8 sm:w-10 sm:h-10 text-gray-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M3 9.75L12 3l9 6.75V20a1 1 0 01-1 1h-5.25a.75.75 0 01-.75-.75V14a.75.75 0 00-.75-.75h-3a.75.75 0 00-.75.75v6.25a.75.75 0 01-.75.75H4a1 1 0 01-1-1V9.75z" />
@@ -728,6 +732,7 @@ const QuickActions = ({ customActions = [], className = "", showHeader = false, 
                 id: 'dashboard',
                 title: 'แดชบอร์ด',
                 subtitle: 'ข้อมูลสรุปและสถิติ',
+                url: '/auth/employee/dashboard', // <-- เพิ่ม url
                 icon: (
                     <svg className="w-8 h-8 sm:w-10 sm:h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />
@@ -747,6 +752,7 @@ const QuickActions = ({ customActions = [], className = "", showHeader = false, 
                 id: 'Points',
                 title: 'จัดการแต้มสะสม',
                 subtitle: 'แต้มสะสม รางวัล และสิทธิประโยชน์',
+                url: '/auth/employee/managepoint', // <-- เพิ่ม url
                 icon: (
                     <svg className="w-8 h-8 sm:w-10 sm:h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
@@ -766,6 +772,7 @@ const QuickActions = ({ customActions = [], className = "", showHeader = false, 
                 id: 'products',
                 title: 'จัดการสินค้า',
                 subtitle: 'เพิ่ม แก้ไข ลบรายการสินค้า',
+                url: '/auth/employee/menu', // <-- เพิ่ม url
                 icon: (
                     <svg className="w-8 h-8 sm:w-10 sm:h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
@@ -785,6 +792,7 @@ const QuickActions = ({ customActions = [], className = "", showHeader = false, 
                 id: 'customers',
                 title: 'ลูกค้า',
                 subtitle: 'ข้อมูลและประวัติการซื้อ',
+                url: '/auth/employee/customers', // <-- เพิ่ม url
                 icon: (
                     <svg className="w-8 h-8 sm:w-10 sm:h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
@@ -804,9 +812,10 @@ const QuickActions = ({ customActions = [], className = "", showHeader = false, 
                 id: 'employees',
                 title: 'พนักงาน',
                 subtitle: 'จัดการข้อมูลบุคลากร',
+                url: '/auth/employee/employees', // <-- เพิ่ม url
                 icon: (
                     <svg className="w-8 h-8 sm:w-10 sm:h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                     </svg>
                 ),
                 bgColor: 'bg-white border border-gray-200',
@@ -823,6 +832,7 @@ const QuickActions = ({ customActions = [], className = "", showHeader = false, 
                 id: 'logout',
                 title: 'ออกจากระบบ',
                 subtitle: 'ออกจากระบบอย่างปลอดภัย',
+                url: '/auth/login', // <-- เพิ่ม url
                 icon: (
                     <svg className="w-8 h-8 sm:w-10 sm:h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
@@ -925,8 +935,8 @@ const QuickActions = ({ customActions = [], className = "", showHeader = false, 
                             className={`
                 group relative rounded-3xl shadow-lg hover:shadow-2xl 
                 transition-all duration-300 transform hover:scale-105 active:scale-95
-                p-6 sm:p-8 text-center border-2 border-transparent
-                ${action.bgColor} hover:border-white/50
+                p-6 sm:p-8 text-center border-2
+                ${isCurrentPath(action.url) ? 'border-blue-400 bg-blue-50/50' : 'bg-white border-gray-200'}
                 focus:outline-none focus:ring-4 focus:ring-blue-200
                 min-h-[120px] sm:min-h-[140px] lg:min-h-[160px]
                 flex flex-col items-center justify-center
@@ -937,7 +947,8 @@ const QuickActions = ({ customActions = [], className = "", showHeader = false, 
                         >
                             <div className={`
                 transition-transform duration-300
-                ${action.iconColor} group-hover:scale-110
+                ${isCurrentPath(action.url) ? 'text-blue-600' : action.iconColor}
+                group-hover:scale-110
                 drop-shadow-sm mb-2 sm:mb-3
               `}>
                                 {action.icon}
@@ -946,7 +957,7 @@ const QuickActions = ({ customActions = [], className = "", showHeader = false, 
                             <div className="text-center">
                                 <span className={`
                   text-xs sm:text-sm font-medium
-                  ${action.iconColor} group-hover:text-opacity-90
+                  ${isCurrentPath(action.url) ? 'text-blue-800' : action.iconColor} group-hover:text-opacity-90
                   leading-tight block
                 `}>
                                     {action.title}
