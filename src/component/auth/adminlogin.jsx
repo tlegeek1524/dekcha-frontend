@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { Eye, EyeOff, AlertCircle } from 'lucide-react';
 import { useNavigate } from "react-router-dom";
@@ -14,6 +14,13 @@ function AdminLogin() {
   const [fieldErrors, setFieldErrors] = useState({ user: false, password: false });
   const API_URL = import.meta.env.VITE_API_URL;
   const navigate = useNavigate();
+
+  // Redirect if AuthToken cookie exists
+  useEffect(() => {
+    if (Cookies.get('AuthToken')) {
+      navigate("/auth/employee");
+    }
+  }, [navigate]);
 
   // Handle form submission
   const handleSubmit = async (e) => {
