@@ -1,4 +1,3 @@
-// ส่วน import และ setup ยังเหมือนเดิม
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import liff from '@line/liff';
@@ -25,8 +24,10 @@ export default function Login() {
 
       await liff.init({ liffId: LIFF_ID });
 
+      // **แก้ไข:** เมื่อล็อกอินสำเร็จ ให้เปลี่ยนเส้นทางไปยังหน้าโปรไฟล์โดยตรง
       if (liff.isLoggedIn() && liff.getAccessToken()) {
-        navigate('/login/userlogin');
+        message.success('เข้าสู่ระบบสำเร็จ! กำลังเปลี่ยนเส้นทาง...');
+        navigate('/login/userlogin'); // เปลี่ยนเส้นทางไปหน้าโปรไฟล์
         return;
       }
     } catch (err) {
@@ -63,19 +64,16 @@ export default function Login() {
     return (
       <div className="fixed inset-0 flex items-center justify-center bg-[#f5f5f5] font-['Kanit',sans-serif]">
         <div className="text-center">
-          {/* Loading Icon */}
           <div className="relative mb-6">
             <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-[#8d6e6390] backdrop-blur-md shadow-xl animate-pulse">
               <CoffeeOutlined className="text-white text-3xl animate-bounce" />
             </div>
-            {/* Small floating dots */}
             <div className="absolute -top-1 -right-1 w-3 h-3 bg-[#a1887f] rounded-full animate-ping"></div>
             <div className="absolute -bottom-1 -left-1 w-2 h-2 bg-[#8d6e63] rounded-full animate-ping delay-300"></div>
           </div>
           
           <h2 className="text-2xl font-bold text-[#3e2723] mb-4 font-['Prompt',sans-serif]">DekCha</h2>
           
-          {/* Enhanced Loading Animation */}
           <div className="flex justify-center space-x-2 mb-4">
             <div className="w-3 h-3 rounded-full bg-[#8d6e63] animate-bounce"></div>
             <div className="w-3 h-3 rounded-full bg-[#a1887f] animate-bounce delay-100"></div>
@@ -90,13 +88,11 @@ export default function Login() {
 
   return (
     <div className="min-h-screen w-full flex flex-col items-center justify-center bg-gradient-to-br from-[#f5f5f5] to-[#f0f0f0] font-['Kanit',sans-serif] px-4 py-8 relative">
-      {/* Subtle background decorations */}
       <div className="absolute top-20 left-10 w-32 h-32 bg-[#8d6e6308] rounded-full blur-2xl"></div>
       <div className="absolute bottom-40 right-10 w-40 h-40 bg-[#a1887f08] rounded-full blur-2xl"></div>
       <div className="text-center mb-8 relative z-10">
         <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-[#8d6e6390] backdrop-blur-md shadow-2xl relative hover:scale-105 transition-transform duration-300">
           <CoffeeOutlined className="text-white text-4xl" />
-          {/* Subtle glow effect */}
           <div className="absolute inset-0 rounded-full bg-[#8d6e63] opacity-20 blur-lg animate-pulse"></div>
         </div>
         <h1 className="text-4xl font-bold mt-4 text-[#3e2723] font-['Prompt',sans-serif] drop-shadow-sm">DekCha</h1>
@@ -104,10 +100,8 @@ export default function Login() {
         <div className="w-16 h-1 mx-auto rounded-full bg-gradient-to-r from-[#a1887f] to-[#8d6e63] mt-2 shadow-sm" />
       </div>
 
-      {/* 💡 การ์ด login แบบ responsive */}
       <div className="w-[92%] sm:w-[90%] md:max-w-sm lg:max-w-md relative z-10">
         <div className="rounded-3xl shadow-2xl p-6 sm:p-8 border border-[#8d6e6330] backdrop-blur-md bg-[#fff8e199] relative overflow-hidden hover:shadow-3xl transition-shadow duration-300">
-          {/* Subtle inner glow */}
           <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-[#ffffff20] to-transparent pointer-events-none"></div>
           
           <div className="relative z-10">
@@ -135,7 +129,6 @@ export default function Login() {
               }}
               aria-label="เข้าสู่ระบบด้วย LINE"
             >
-              {/* Button shine effect */}
               <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -skew-x-12 transform translate-x-[-100%] hover:translate-x-[100%] transition-transform duration-700"></div>
               
               {status.isLoggingIn ? (
@@ -168,7 +161,6 @@ export default function Login() {
                 <div className="h-px flex-1 opacity-20 bg-gradient-to-r from-transparent via-[#8d6e63] to-transparent" />
               </div>
               
-              {/* Enhanced feature indicators */}
               <div className="flex justify-center space-x-3 mt-4">
                 <span className="text-xs text-[#5d4037] opacity-60 font-light px-3 py-1 rounded-full bg-[#ffffff40] backdrop-blur-sm border border-[#8d6e6320] hover:opacity-80 transition-opacity">ใช้งานง่าย</span>
                 <span className="text-xs text-[#5d4037] opacity-60 font-light px-3 py-1 rounded-full bg-[#ffffff40] backdrop-blur-sm border border-[#8d6e6320] hover:opacity-80 transition-opacity">ปลอดภัย</span>
