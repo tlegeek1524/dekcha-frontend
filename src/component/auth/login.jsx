@@ -26,13 +26,9 @@ export default function Login() {
       await liff.init({ liffId: LIFF_ID });
 
       if (liff.isLoggedIn()) {
-        message.loading({ content: 'กำลังดึงข้อมูลโปรไฟล์...', key: LOGIN_MESSAGE_KEY });
-        // ดึงข้อมูลโปรไฟล์ผู้ใช้ทันที
-        const profile = await liff.getProfile(); 
-        
-        // เมื่อข้อมูลพร้อมแล้ว ค่อย navigate และส่งข้อมูลไปด้วย
-        navigate('/login/userlogin', { state: { profile: profile } });
-        message.success({ content: 'เข้าสู่ระบบสำเร็จ!', key: LOGIN_MESSAGE_KEY });
+        setTimeout(() => {
+          navigate('/login/userlogin');
+        }, 500); // ดีเลย์ครึ่งวินาที กัน React ยังไม่ mount เสร็จ
       }
     } catch (err) {
       console.error('LIFF init failed:', err.toString(), err);
@@ -52,6 +48,12 @@ export default function Login() {
     message.loading({ content: 'กำลังเชื่อมต่อกับ LINE...', key: LOGIN_MESSAGE_KEY });
     try {
       await liff.login();
+      // เพิ่ม setTimeout ที่นี่เพื่อให้มีช่วงเวลาทำงานก่อนที่จะเรียกฟังก์ชันอื่นต่อ
+      setTimeout(async () => {
+        // เมื่อ LIFF ทำงานเสร็จสิ้นและผู้ใช้กลับมาที่แอป
+        // โค้ดใน initializeLiff จะทำงานและ redirect ต่อไป
+        message.success({ content: 'เข้าสู่ระบบสำเร็จ! โปรดรอสักครู่...', key: LOGIN_MESSAGE_KEY });
+      }, 1000); // รอ 1 วินาที
     } catch (err) {
       console.error('LIFF login error:', err.toString(), err);
       message.error({ content: 'เข้าสู่ระบบไม่สำเร็จ', key: LOGIN_MESSAGE_KEY });
