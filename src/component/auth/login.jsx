@@ -25,12 +25,11 @@ export default function Login() {
 
       await liff.init({ liffId: LIFF_ID });
 
-      useEffect(() => {
-        if (!status.isInitializing && liff.isLoggedIn()) {
-          navigate('/login/userlogin');
-        }
-      }, [status.isInitializing, navigate]);
-      
+      if (liff.isLoggedIn()) {
+  setTimeout(() => {
+    navigate('/login/userlogin');
+  }, 500); // ดีเลย์ครึ่งวินาที กัน React ยังไม่ mount เสร็จ
+}
     } catch (err) {
       console.error('LIFF init failed:', err.toString(), err);
       setStatus(prev => ({ ...prev, error: 'ไม่สามารถเริ่มต้น LIFF ได้' }));
@@ -45,7 +44,7 @@ export default function Login() {
     link.href = 'https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=Prompt:wght@300;400;500;600;700&display=swap';
     link.rel = 'stylesheet';
     document.head.appendChild(link);
-
+    
     initializeLiff();
   }, [initializeLiff]);
 
@@ -74,16 +73,16 @@ export default function Login() {
             <div className="absolute -top-1 -right-1 w-3 h-3 bg-[#a1887f] rounded-full animate-ping"></div>
             <div className="absolute -bottom-1 -left-1 w-2 h-2 bg-[#8d6e63] rounded-full animate-ping delay-300"></div>
           </div>
-
+          
           <h2 className="text-2xl font-bold text-[#3e2723] mb-4 font-['Prompt',sans-serif]">DekCha</h2>
-
+          
           {/* Enhanced Loading Animation */}
           <div className="flex justify-center space-x-2 mb-4">
             <div className="w-3 h-3 rounded-full bg-[#8d6e63] animate-bounce"></div>
             <div className="w-3 h-3 rounded-full bg-[#a1887f] animate-bounce delay-100"></div>
             <div className="w-3 h-3 rounded-full bg-[#8d6e63] animate-bounce delay-200"></div>
           </div>
-
+          
           <p className="text-[#5d4037] opacity-70 text-sm">กำลังโหลด...</p>
         </div>
       </div>
@@ -111,7 +110,7 @@ export default function Login() {
         <div className="rounded-3xl shadow-2xl p-6 sm:p-8 border border-[#8d6e6330] backdrop-blur-md bg-[#fff8e199] relative overflow-hidden hover:shadow-3xl transition-shadow duration-300">
           {/* Subtle inner glow */}
           <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-[#ffffff20] to-transparent pointer-events-none"></div>
-
+          
           <div className="relative z-10">
             <div className="text-center mb-8">
               <h3 className="text-xl sm:text-2xl font-bold mb-2 text-[#3e2723] font-['Prompt',sans-serif] drop-shadow-sm">
@@ -125,11 +124,12 @@ export default function Login() {
             <button
               onClick={handleLogin}
               disabled={status.isLoggingIn}
-              className={`w-full py-4 sm:py-5 px-6 sm:px-8 rounded-2xl font-medium text-white text-base sm:text-lg transition-all duration-300 relative overflow-hidden transform ${status.isLoggingIn ? 'cursor-not-allowed opacity-70' : 'hover:shadow-2xl hover:-translate-y-0.5 active:scale-95'
-                }`}
+              className={`w-full py-4 sm:py-5 px-6 sm:px-8 rounded-2xl font-medium text-white text-base sm:text-lg transition-all duration-300 relative overflow-hidden transform ${
+                status.isLoggingIn ? 'cursor-not-allowed opacity-70' : 'hover:shadow-2xl hover:-translate-y-0.5 active:scale-95'
+              }`}
               style={{
-                background: status.isLoggingIn
-                  ? 'linear-gradient(135deg, #a1887f, #8d6e63)'
+                background: status.isLoggingIn 
+                  ? 'linear-gradient(135deg, #a1887f, #8d6e63)' 
                   : 'linear-gradient(135deg, #8d6e63, #6d4c41)',
                 boxShadow: '0 20px 40px -10px rgba(141, 110, 99, 0.3)',
                 fontFamily: 'Kanit, sans-serif',
@@ -138,7 +138,7 @@ export default function Login() {
             >
               {/* Button shine effect */}
               <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -skew-x-12 transform translate-x-[-100%] hover:translate-x-[100%] transition-transform duration-700"></div>
-
+              
               {status.isLoggingIn ? (
                 <div className="flex items-center justify-center space-x-4 relative z-10">
                   <div className="flex space-x-2">
@@ -168,7 +168,7 @@ export default function Login() {
                 <span className="text-xs opacity-60 text-[#5d4037] font-light px-3 py-1 rounded-full bg-[#ffffff30] backdrop-blur-sm">หรือ</span>
                 <div className="h-px flex-1 opacity-20 bg-gradient-to-r from-transparent via-[#8d6e63] to-transparent" />
               </div>
-
+              
               {/* Enhanced feature indicators */}
               <div className="flex justify-center space-x-3 mt-4">
                 <span className="text-xs text-[#5d4037] opacity-60 font-light px-3 py-1 rounded-full bg-[#ffffff40] backdrop-blur-sm border border-[#8d6e6320] hover:opacity-80 transition-opacity">ใช้งานง่าย</span>
