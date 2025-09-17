@@ -25,10 +25,9 @@ export default function Login() {
 
       await liff.init({ liffId: LIFF_ID });
 
-      if (liff.isLoggedIn()) {
-        setTimeout(() => {
-          navigate('/login/userlogin');
-        }, 500); // ดีเลย์ครึ่งวินาที กัน React ยังไม่ mount เสร็จ
+      if (liff.isLoggedIn() && liff.getAccessToken()) {
+        navigate('/login/userlogin');
+        return;
       }
     } catch (err) {
       console.error('LIFF init failed:', err.toString(), err);
@@ -40,6 +39,11 @@ export default function Login() {
   }, [navigate]);
 
   useEffect(() => {
+    const link = document.createElement('link');
+    link.href = 'https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=Prompt:wght@300;400;500;600;700&display=swap';
+    link.rel = 'stylesheet';
+    document.head.appendChild(link);
+    
     initializeLiff();
   }, [initializeLiff]);
 
@@ -48,12 +52,6 @@ export default function Login() {
     message.loading({ content: 'กำลังเชื่อมต่อกับ LINE...', key: LOGIN_MESSAGE_KEY });
     try {
       await liff.login();
-      // เพิ่ม setTimeout ที่นี่เพื่อให้มีช่วงเวลาทำงานก่อนที่จะเรียกฟังก์ชันอื่นต่อ
-      setTimeout(async () => {
-        // เมื่อ LIFF ทำงานเสร็จสิ้นและผู้ใช้กลับมาที่แอป
-        // โค้ดใน initializeLiff จะทำงานและ redirect ต่อไป
-        message.success({ content: 'เข้าสู่ระบบสำเร็จ! โปรดรอสักครู่...', key: LOGIN_MESSAGE_KEY });
-      }, 1000); // รอ 1 วินาที
     } catch (err) {
       console.error('LIFF login error:', err.toString(), err);
       message.error({ content: 'เข้าสู่ระบบไม่สำเร็จ', key: LOGIN_MESSAGE_KEY });
