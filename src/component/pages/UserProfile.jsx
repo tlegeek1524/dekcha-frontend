@@ -2,10 +2,10 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import liff from '@line/liff';
 import DOMPurify from 'dompurify';
 import Cookies from 'js-cookie';
-import Navbar from '../navbar'; // Make sure Navbar component is correctly imported
+import Navbar from '../navbar';
 import Spinner from '../util/LoadSpinner';
 import { QRCodeCanvas } from 'qrcode.react';
-import { TbQrcode } from "react-icons/tb"; // เพิ่มที่ด้านบน
+import { TbQrcode } from "react-icons/tb";
 
 // --- ICONS ---
 const Icons = {
@@ -25,50 +25,6 @@ const Icons = {
 };
 
 // --- QR CODE COMPONENTS ---
-const generateQRMatrix = (text, size = 21) => {
-  const matrix = Array(size).fill().map(() => Array(size).fill(0));
-
-  // Add finder patterns (corners)
-  const addFinderPattern = (x, y) => {
-    for (let i = 0; i < 7; i++) {
-      for (let j = 0; j < 7; j++) {
-        if (x + i < size && y + j < size) {
-          if ((i === 0 || i === 6 || j === 0 || j === 6) ||
-            (i >= 2 && i <= 4 && j >= 2 && j <= 4)) {
-            matrix[x + i][y + j] = 1;
-          }
-        }
-      }
-    }
-  };
-
-  addFinderPattern(0, 0);
-  addFinderPattern(0, size - 7);
-  addFinderPattern(size - 7, 0);
-
-  // Add timing patterns
-  for (let i = 8; i < size - 8; i++) {
-    matrix[6][i] = i % 2;
-    matrix[i][6] = i % 2;
-  }
-
-  // Add data (simplified pattern based on text)
-  let hash = 0;
-  for (let i = 0; i < text.length; i++) {
-    hash = ((hash << 5) - hash + text.charCodeAt(i)) & 0xffffffff;
-  }
-
-  for (let i = 9; i < size - 9; i++) {
-    for (let j = 1; j < size - 1; j++) {
-      if (matrix[i][j] === 0 && i !== 6 && j !== 6) {
-        matrix[i][j] = (hash >> ((i * j) % 16)) & 1;
-      }
-    }
-  }
-
-  return matrix;
-};
-
 const QRCodeDisplay = React.memo(function QRCodeDisplay({ data, size = 200, canvasRef }) {
   return (
     <QRCodeCanvas
@@ -110,78 +66,40 @@ const QRPopup = ({ isOpen, onClose, uid, copyToClipboard }) => {
 
   return (
     <>
-      {/* Backdrop */}
-      <div
-        className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 transition-all duration-300"
-        onClick={onClose}
-      />
-
-      {/* Modal */}
+      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 transition-all duration-300" onClick={onClose} />
       <div className="fixed inset-0 flex items-center justify-center p-4 z-50">
-        <div
-          className="bg-white rounded-3xl shadow-2xl border border-[#8d6e63]/30 w-full max-w-sm transform transition-all duration-300 scale-100 opacity-100 pointer-events-auto animate-in zoom-in-95 duration-300"
-          style={{ fontFamily: 'Prompt, sans-serif' }}
-        >
-          {/* Header */}
+        <div className="bg-white rounded-3xl shadow-2xl border border-[#8d6e63]/30 w-full max-w-sm transform transition-all duration-300 scale-100 opacity-100 pointer-events-auto animate-in zoom-in-95 duration-300" style={{ fontFamily: 'Prompt, sans-serif' }}>
           <div className="bg-gradient-to-br from-[#5d4037] to-[#3e2723] px-6 py-4 text-[#f5f5f5] rounded-t-3xl">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 bg-[#f5f5f5]/20 rounded-lg flex items-center justify-center">
                   <Icons.QrCode />
                 </div>
-                <h2 className="text-lg font-semibold" style={{ fontFamily: 'Kanit, sans-serif' }}>
-                  QR Code
-                </h2>
+                <h2 className="text-lg font-semibold" style={{ fontFamily: 'Kanit, sans-serif' }}>QR Code</h2>
               </div>
-              <button
-                onClick={onClose}
-                className="w-8 h-8 hover:bg-[#f5f5f5]/20 rounded-lg flex items-center justify-center transition-colors duration-200"
-              >
+              <button onClick={onClose} className="w-8 h-8 hover:bg-[#f5f5f5]/20 rounded-lg flex items-center justify-center transition-colors duration-200">
                 <Icons.Close />
               </button>
             </div>
           </div>
-
-          {/* Content */}
           <div className="p-6">
-            {/* QR Code */}
             <div className="mb-6 flex justify-center">
               <QRCodeDisplay data={uid || 'No UID'} size={200} canvasRef={canvasRef} />
             </div>
-
-            {/* Info */}
             <div className="text-center mb-6">
-              <p className="text-sm text-[#5d4037] mb-3">
-                QR Code เพื่อรับแต้มสะสม
-              </p>
+              <p className="text-sm text-[#5d4037] mb-3">QR Code เพื่อรับแต้มสะสม</p>
               <div className="bg-[#f5f5f5] rounded-lg p-3 border border-[#8d6e63]/20">
-                <code className="text-xs text-[#3e2723] font-mono break-all">
-                  {uid || 'ไม่มีข้อมูล'}
-                </code>
+                <code className="text-xs text-[#3e2723] font-mono break-all">{uid || 'ไม่มีข้อมูล'}</code>
               </div>
             </div>
-
-            {/* Action Buttons */}
             <div className="flex gap-3">
-              <button
-                onClick={handleCopy}
-                className="flex-1 flex items-center justify-center gap-2 bg-gradient-to-r from-[#5d4037] to-[#3e2723] hover:from-[#3e2723] hover:to-[#2e1912] text-[#f5f5f5] px-4 py-3 rounded-xl text-sm transition-all duration-300 active:scale-95 hover:shadow-lg disabled:opacity-50"
-                disabled={isCopied}
-              >
+              <button onClick={handleCopy} className="flex-1 flex items-center justify-center gap-2 bg-gradient-to-r from-[#5d4037] to-[#3e2723] hover:from-[#3e2723] hover:to-[#2e1912] text-[#f5f5f5] px-4 py-3 rounded-xl text-sm transition-all duration-300 active:scale-95 hover:shadow-lg disabled:opacity-50" disabled={isCopied}>
                 {isCopied ? <Icons.Check /> : <Icons.Copy />}
-                <span style={{ fontFamily: 'Kanit, sans-serif' }}>
-                  {isCopied ? 'คัดลอกแล้ว' : 'คัดลอก'}
-                </span>
+                <span style={{ fontFamily: 'Kanit, sans-serif' }}>{isCopied ? 'คัดลอกแล้ว' : 'คัดลอก'}</span>
               </button>
-
-              <button
-                onClick={downloadQR}
-                className="flex-1 flex items-center justify-center gap-2 bg-[#f5f5f5] hover:bg-[#e0e0e0] text-[#3e2723] border-2 border-[#5d4037] px-4 py-3 rounded-xl text-sm transition-all duration-300 active:scale-95 hover:shadow-lg"
-              >
+              <button onClick={downloadQR} className="flex-1 flex items-center justify-center gap-2 bg-[#f5f5f5] hover:bg-[#e0e0e0] text-[#3e2723] border-2 border-[#5d4037] px-4 py-3 rounded-xl text-sm transition-all duration-300 active:scale-95 hover:shadow-lg">
                 <Icons.Download />
-                <span style={{ fontFamily: 'Kanit, sans-serif' }}>
-                  ดาวน์โหลด
-                </span>
+                <span style={{ fontFamily: 'Kanit, sans-serif' }}>ดาวน์โหลด</span>
               </button>
             </div>
           </div>
@@ -194,41 +112,49 @@ const QRPopup = ({ isOpen, onClose, uid, copyToClipboard }) => {
 // Hidden QR Button Component
 const HiddenQRButton = ({ uid, copyToClipboard }) => {
   const [isPopupOpen, setIsPopupOpen] = useState(false);
-
   return (
     <>
-      {/* Hidden Button - เป็นไอคอนเล็กๆ ที่มุมขวาบน */}
-      <button
-        onClick={() => setIsPopupOpen(true)}
-        className="absolute top-4 right-4 w-8 h-8 bg-[#f5f5f5]/80 hover:bg-[#f5f5f5] text-[#5d4037] rounded-lg shadow-lg backdrop-blur-sm border border-[#8d6e63]/20 flex items-center justify-center opacity-70 hover:opacity-100 transition-all duration-300 hover:scale-110 group z-10"
-        title="แสดง QR Code"
-      >
+      <button onClick={() => setIsPopupOpen(true)} className="absolute top-4 right-4 w-8 h-8 bg-[#f5f5f5]/80 hover:bg-[#f5f5f5] text-[#5d4037] rounded-lg shadow-lg backdrop-blur-sm border border-[#8d6e63]/20 flex items-center justify-center opacity-70 hover:opacity-100 transition-all duration-300 hover:scale-110 group z-10" title="แสดง QR Code">
         <Icons.QrCode className="w-4 h-4 group-hover:scale-110 transition-transform duration-200" />
       </button>
-
-      {/* QR Popup */}
-      <QRPopup
-        isOpen={isPopupOpen}
-        onClose={() => setIsPopupOpen(false)}
-        uid={uid}
-        copyToClipboard={copyToClipboard}
-      />
+      <QRPopup isOpen={isPopupOpen} onClose={() => setIsPopupOpen(false)} uid={uid} copyToClipboard={copyToClipboard} />
     </>
   );
 };
 
-// --- ENVIRONMENT & API / HOOKS ---
+// --- ENVIRONMENT & API ---
 const LIFF_ID = import.meta.env.VITE_LIFF_ID;
 const API_URL = import.meta.env.VITE_API_URL;
-const cache = new Map();
-const getCached = (key, maxAge = 90000) => { const item = cache.get(key); return item && Date.now() - item.time < maxAge ? item.data : null; };
-const setCache = (key, data) => cache.set(key, { data, time: Date.now() });
-const api = async (url, options = {}) => { const controller = new AbortController(); setTimeout(() => controller.abort(), 5000); const response = await fetch(url, { ...options, signal: controller.signal, headers: { 'Content-Type': 'application/json', ...options.headers } }); if (!response.ok) throw new Error(`HTTP ${response.status}`); return response.json(); };
-const backgroundFetch = async (url, options = {}) => { try { return await api(url, options); } catch (err) { console.warn('Background fetch failed:', err); return null; } };
-const useSmartPolling = (callback, interval = 30000) => { const savedCallback = useRef(); const intervalRef = useRef(); const [isPolling, setIsPolling] = useState(false); useEffect(() => { savedCallback.current = callback; }); const startPolling = useCallback(() => { setIsPolling(true); intervalRef.current = setInterval(() => savedCallback.current?.(), interval); }, [interval]); const stopPolling = useCallback(() => { setIsPolling(false); clearInterval(intervalRef.current); }, []); useEffect(() => { const handleVisibilityChange = () => { if (document.hidden) { stopPolling(); } else { startPolling(); savedCallback.current?.(); } }; document.addEventListener('visibilitychange', handleVisibilityChange); if (!document.hidden) startPolling(); return () => { document.removeEventListener('visibilitychange', handleVisibilityChange); stopPolling(); }; }, [startPolling, stopPolling]); return isPolling; };
 
-// --- UI SUB-COMPONENTS ---
+// Improved API function with better error handling
+const api = async (url, options = {}) => {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 10000); // Increased timeout
+  
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal,
+      headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+      }
+    });
+    
+    clearTimeout(timeoutId);
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+    
+    return await response.json();
+  } catch (error) {
+    clearTimeout(timeoutId);
+    throw error;
+  }
+};
 
+// --- UI COMPONENTS ---
 const Toast = React.memo(({ message, type, show }) => {
   if (!show) return null;
   const styles = {
@@ -237,41 +163,44 @@ const Toast = React.memo(({ message, type, show }) => {
     info: 'bg-[#3e2723]',
     update: 'bg-amber-600'
   };
-  return (<div className={`fixed top-5 right-5 z-50 ${styles[type]} text-white px-4 py-2.5 rounded-xl shadow-2xl flex items-center gap-3 transition-all duration-300 transform ${show ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'}`}><span className="font-medium text-sm" style={{ fontFamily: 'Kanit, sans-serif' }}>{message}</span></div>);
+  return (
+    <div className={`fixed top-5 right-5 z-50 ${styles[type]} text-white px-4 py-2.5 rounded-xl shadow-2xl flex items-center gap-3 transition-all duration-300 transform ${show ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'}`}>
+      <span className="font-medium text-sm" style={{ fontFamily: 'Kanit, sans-serif' }}>{message}</span>
+    </div>
+  );
 });
 
-const ProfileHeader = React.memo(({ user, safeName, isUpdating, isPolling, prefetchData, copyToClipboard }) => (
+const ProfileHeader = React.memo(({ user, safeName, copyToClipboard }) => (
   <div className="bg-gradient-to-br from-[#5d4037] to-[#3e2723] px-6 py-8 text-[#f5f5f5] relative">
-    {/* Hidden QR Button */}
     <HiddenQRButton uid={user.uid} copyToClipboard={copyToClipboard} />
-
     <div className="text-center relative z-10">
       <div className="mb-4">
         {user.pictureUrl ? (
-          <img src={user.pictureUrl} alt="Profile" className="w-24 h-24 rounded-full mx-auto shadow-2xl ring-4 ring-[#f5f5f5]/20 transition-transform duration-300 hover:scale-105 cursor-pointer" loading="lazy" onClick={prefetchData} />
+          <img src={user.pictureUrl} alt="Profile" className="w-24 h-24 rounded-full mx-auto shadow-2xl ring-4 ring-[#f5f5f5]/20 transition-transform duration-300 hover:scale-105" loading="lazy" />
         ) : (
-          <div className="w-24 h-24 bg-gradient-to-br from-[#a1887f] to-[#8d6e63] rounded-full mx-auto flex items-center justify-center shadow-lg ring-4 ring-[#f5f5f5]/20"><Icons.User /></div>
+          <div className="w-24 h-24 bg-gradient-to-br from-[#a1887f] to-[#8d6e63] rounded-full mx-auto flex items-center justify-center shadow-lg ring-4 ring-[#f5f5f5]/20">
+            <Icons.User />
+          </div>
         )}
       </div>
-      <h1 className="text-2xl font-semibold mb-2 text-[#f5f5f5] tracking-wide" style={{ fontFamily: 'Kanit, sans-serif' }}>{safeName}</h1>
-      <div className="flex items-center justify-center gap-2 text-xs opacity-80">
-        <div className={`w-2 h-2 rounded-full transition-colors duration-300 ${isUpdating ? 'bg-amber-400 animate-pulse' : isPolling ? 'bg-emerald-400' : 'bg-gray-400'}`}></div>
-        <span className="font-light">{isUpdating ? 'กำลังอัปเดต...' : isPolling ? 'ออนไลน์' : 'ไม่ได้ใช้งาน'}</span>
-      </div>
+      <h1 className="text-2xl font-semibold mb-2 text-[#f5f5f5] tracking-wide" style={{ fontFamily: 'Kanit, sans-serif' }}>
+        {safeName}
+      </h1>
     </div>
   </div>
 ));
 
-const PointsCard = React.memo(({ userpoint, pointsAnimation, prefetchData }) => (
-  <div className={`bg-gradient-to-br from-[#5d4037] to-[#3e2723] rounded-2xl p-6 text-[#f5f5f5] shadow-xl transition-all duration-500 cursor-pointer relative overflow-hidden group ${pointsAnimation ? 'scale-105 shadow-2xl' : 'hover:scale-[1.02] hover:shadow-2xl'}`} onClick={prefetchData}>
+const PointsCard = React.memo(({ userpoint, pointsAnimation }) => (
+  <div className={`bg-gradient-to-br from-[#5d4037] to-[#3e2723] rounded-2xl p-6 text-[#f5f5f5] shadow-xl transition-all duration-500 relative overflow-hidden ${pointsAnimation ? 'scale-105 shadow-2xl' : ''}`}>
     <div className={`absolute top-0 left-[-100%] h-full w-full bg-gradient-to-r from-transparent via-white/20 to-transparent transition-transform duration-1000 ${pointsAnimation ? 'translate-x-[200%]' : ''}`}></div>
     <div className="flex items-center justify-between">
       <div>
         <p className="text-sm opacity-80 mb-1 tracking-wider" style={{ fontFamily: 'Prompt, sans-serif' }}>คะแนนสะสม</p>
-        <p className={`text-4xl font-bold transition-colors duration-500 ${pointsAnimation ? 'text-amber-300' : 'text-[#f5f5f5]'}`}>{userpoint.toLocaleString()}</p>
-        <p className="text-xs opacity-60 mt-2 flex items-center gap-1.5 transition-opacity group-hover:opacity-100"><Icons.Refresh className="w-3 h-3" />คลิกเพื่อรีเฟรช</p>
+        <p className={`text-4xl font-bold transition-colors duration-500 ${pointsAnimation ? 'text-amber-300' : 'text-[#f5f5f5]'}`}>
+          {userpoint.toLocaleString()}
+        </p>
       </div>
-      <Icons.Star className={`w-12 h-12 text-amber-400/80 transition-all duration-500 ${pointsAnimation ? 'rotate-12 scale-125' : 'group-hover:rotate-6'}`} />
+      <Icons.Star className={`w-12 h-12 text-amber-400/80 transition-all duration-500 ${pointsAnimation ? 'rotate-12 scale-125' : ''}`} />
     </div>
   </div>
 ));
@@ -279,13 +208,21 @@ const PointsCard = React.memo(({ userpoint, pointsAnimation, prefetchData }) => 
 const UserIdAccordion = React.memo(({ uid, copyToClipboard }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
-  const handleCopy = () => { if (!uid) return; copyToClipboard(uid); setIsCopied(true); setTimeout(() => setIsCopied(false), 2000); };
+  
+  const handleCopy = () => {
+    if (!uid) return;
+    copyToClipboard(uid);
+    setIsCopied(true);
+    setTimeout(() => setIsCopied(false), 2000);
+  };
 
   return (
     <div className="bg-[#f5f5f5] rounded-2xl p-4 border border-[#8d6e63]/30 transition-all duration-300">
       <button onClick={() => setIsOpen(!isOpen)} className="w-full flex items-center justify-between text-left group">
         <div className="flex items-center gap-4">
-          <div className="w-10 h-10 bg-gradient-to-br from-[#5d4037] to-[#3e2723] rounded-lg flex items-center justify-center text-[#f5f5f5] transition-transform duration-300 group-hover:scale-105"><Icons.Eye open={isOpen} /></div>
+          <div className="w-10 h-10 bg-gradient-to-br from-[#5d4037] to-[#3e2723] rounded-lg flex items-center justify-center text-[#f5f5f5] transition-transform duration-300 group-hover:scale-105">
+            <Icons.Eye open={isOpen} />
+          </div>
           <div>
             <p className="font-medium text-[#3e2723]" style={{ fontFamily: 'Kanit, sans-serif' }}>รหัสผู้ใช้</p>
             <p className="text-sm text-[#5d4037]">{isOpen ? 'คลิกเพื่อซ่อน' : 'คลิกเพื่อแสดง'}</p>
@@ -299,7 +236,8 @@ const UserIdAccordion = React.memo(({ uid, copyToClipboard }) => {
           <div className="flex items-center justify-between gap-3">
             <code className="text-sm text-[#5d4037] font-mono flex-1 break-all">{uid || 'ไม่มี'}</code>
             <button onClick={handleCopy} className="flex items-center justify-center w-24 gap-2 bg-gradient-to-r from-[#5d4037] to-[#3e2723] hover:from-[#3e2723] hover:to-[#2e1912] text-[#f5f5f5] px-3 py-2 rounded-lg text-sm transition-all duration-300 active:scale-95 hover:shadow-lg disabled:opacity-50" disabled={isCopied}>
-              {isCopied ? <Icons.Check /> : <Icons.Copy />}<span style={{ fontFamily: 'Kanit, sans-serif' }}>{isCopied ? 'คัดลอกแล้ว' : 'คัดลอก'}</span>
+              {isCopied ? <Icons.Check /> : <Icons.Copy />}
+              <span style={{ fontFamily: 'Kanit, sans-serif' }}>{isCopied ? 'คัดลอกแล้ว' : 'คัดลอก'}</span>
             </button>
           </div>
         </div>
@@ -310,81 +248,293 @@ const UserIdAccordion = React.memo(({ uid, copyToClipboard }) => {
 
 const RefreshButton = React.memo(({ onClick, isUpdating }) => (
   <button onClick={onClick} disabled={isUpdating} className="w-full bg-gradient-to-r from-[#5d4037] to-[#3e2723] hover:from-[#3e2723] hover:to-[#2e1912] disabled:opacity-60 disabled:cursor-not-allowed text-[#f5f5f5] py-3 px-4 rounded-2xl transition-all duration-300 active:scale-95 hover:shadow-xl flex items-center justify-center gap-2.5">
-    <div className={`transition-transform duration-500 ${isUpdating ? 'animate-spin' : 'group-hover:rotate-180'}`}>{isUpdating ? <Icons.Spinner /> : <Icons.Refresh />}</div>
-    <span className="text-base font-medium" style={{ fontFamily: 'Kanit, sans-serif' }}>{isUpdating ? 'กำลังอัปเดต...' : 'รีเฟรชตอนนี้'}</span>
+    <div className={`transition-transform duration-500 ${isUpdating ? 'animate-spin' : ''}`}>
+      {isUpdating ? <Icons.Spinner /> : <Icons.Refresh />}
+    </div>
+    <span className="text-base font-medium" style={{ fontFamily: 'Kanit, sans-serif' }}>
+      {isUpdating ? 'กำลังอัปเดต...' : 'รีเฟรชตอนนี้'}
+    </span>
   </button>
 ));
 
 // --- MAIN COMPONENT ---
-
 export default function UserProfile() {
-  const [userInfo, setUserInfo] = useState({ uid: '', name: '', userpoint: 0, profile: null });
+  const [userInfo, setUserInfo] = useState({ 
+    uid: '', 
+    name: '', 
+    userpoint: 0, 
+    profile: null 
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [isUpdating, setIsUpdating] = useState(false);
   const [toast, setToast] = useState({ show: false, message: '', type: '' });
-  const [lastSync, setLastSync] = useState(Date.now());
   const [pointsAnimation, setPointsAnimation] = useState(false);
-  const [syncCount, setSyncCount] = useState(0);
-  const abortRef = useRef();
+  const [initStep, setInitStep] = useState('กำลังเริ่มต้น LIFF...');
 
-  // --- CORE LOGIC ---
-  const showToast = useCallback((message, type = 'info') => { setToast({ show: true, message, type }); setTimeout(() => setToast({ show: false, message: '', type: '' }), 3500); }, []);
-  const copyToClipboard = (text) => { if (!text) return; navigator.clipboard.writeText(text).then(() => showToast('คัดลอกไปยังคลิปบอร์ดแล้ว', 'success')).catch(() => showToast('ไม่สามารถคัดลอกได้', 'error')); };
-  const backgroundSync = useCallback(async (profile) => { if (!profile?.userId) return; try { const token = Cookies.get('authToken'); if (!token) return; const userData = await backgroundFetch(`${API_URL}/users/${profile.userId}`, { headers: { Authorization: `Bearer ${token}` } }); if (userData) { setUserInfo(prev => { const hasChanges = JSON.stringify(prev) !== JSON.stringify({ ...prev, ...userData }); if (hasChanges) { if (userData.userpoint !== prev.userpoint && prev.userpoint > 0) { setPointsAnimation(true); setTimeout(() => setPointsAnimation(false), 1200); const diff = userData.userpoint - prev.userpoint; showToast(`คะแนน ${diff > 0 ? '+' : ''}${diff.toLocaleString()}`, 'update'); } setLastSync(Date.now()); setSyncCount(c => c + 1); setCache(`user_${profile.userId}`, userData); } return hasChanges ? { ...prev, ...userData } : prev; }); } } catch (err) { console.warn('Background sync error:', err); } }, [showToast]);
-  const isPolling = useSmartPolling(() => backgroundSync(userInfo.profile), syncCount > 10 ? 45000 : 30000);
-  const syncData = useCallback(async (profile, silent = false) => { if (!profile?.userId) return; const cacheKey = `user_${profile.userId}`; const cached = getCached(cacheKey); if (cached && silent) { setUserInfo(prev => ({ ...prev, ...cached })); return; } try { const token = Cookies.get('authToken'); if (!token) throw new Error('No token'); if (!silent) { showToast('กำลังอัปเดต...', 'info'); setIsUpdating(true); } if (abortRef.current) abortRef.current.abort(); abortRef.current = new AbortController(); let userData; try { userData = await api(`${API_URL}/users/${profile.userId}`, { headers: { Authorization: `Bearer ${token}` } }); } catch (err) { if (err.message.includes('404') || err.message.includes('400')) { const userDataToSend = { userId: profile.userId, displayName: profile.displayName, pictureUrl: profile.pictureUrl }; if (!silent) showToast('กำลังสร้างบัญชี...', 'info'); try { await api(`${API_URL}/users`, { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(userDataToSend) }); await new Promise(r => setTimeout(r, 1000)); userData = await api(`${API_URL}/users/${profile.userId}`, { headers: { Authorization: `Bearer ${token}` } }); } catch (postError) { console.error('Failed to create user:', postError); userData = { uid: profile.userId, name: profile.displayName, userpoint: 0, displayName: profile.displayName, pictureUrl: profile.pictureUrl }; } } else throw err; } setCache(cacheKey, userData); setUserInfo(prev => ({ ...prev, ...userData })); setLastSync(Date.now()); if (!silent) showToast('อัปเดตสำเร็จ', 'success'); } catch (err) { console.error('Sync error:', err); if (!silent) showToast('เกิดข้อผิดพลาด', 'error'); } finally { setIsUpdating(false); } }, [showToast]);
-  const prefetchData = useCallback(() => { if (userInfo.profile) backgroundSync(userInfo.profile); }, [backgroundSync, userInfo.profile]);
-// UserProfile.jsx (ที่แก้ไขแล้ว)
-useEffect(() => {
-  const init = async () => {
+  const showToast = useCallback((message, type = 'info') => {
+    setToast({ show: true, message, type });
+    setTimeout(() => setToast({ show: false, message: '', type: '' }), 3500);
+  }, []);
+
+  const copyToClipboard = useCallback((text) => {
+    if (!text) return;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text)
+        .then(() => showToast('คัดลอกไปยังคลิปบอร์ดแล้ว', 'success'))
+        .catch(() => showToast('ไม่สามารถคัดลอกได้', 'error'));
+    } else {
+      // Fallback for older browsers
+      const textArea = document.createElement('textarea');
+      textArea.value = text;
+      document.body.appendChild(textArea);
+      textArea.select();
+      try {
+        document.execCommand('copy');
+        showToast('คัดลอกไปยังคลิปบอร์ดแล้ว', 'success');
+      } catch (err) {
+        showToast('ไม่สามารถคัดลอกได้', 'error');
+      }
+      document.body.removeChild(textArea);
+    }
+  }, [showToast]);
+
+  const syncData = useCallback(async (profile) => {
+    if (!profile?.userId) {
+      console.error('No profile or userId provided');
+      return;
+    }
+
     try {
-      await liff.init({ liffId: LIFF_ID });
-
-      // ตรวจสอบว่าผู้ใช้ยังไม่ได้ล็อกอิน
-      // ถ้ายัง ให้เปลี่ยนเส้นทางไปที่หน้าล็อกอิน
-      if (!liff.isLoggedIn()) {
-        window.location.href = '/'; // เปลี่ยนเส้นทางไปที่หน้า login.jsx
-        return; // หยุดการทำงานของโค้ดที่เหลือ
+      setIsUpdating(true);
+      setInitStep('กำลังดึงข้อมูลผู้ใช้...');
+      
+      const token = Cookies.get('authToken');
+      if (!token) {
+        throw new Error('ไม่พบ Authentication Token');
       }
 
-      // ถ้าผู้ใช้ล็อกอินอยู่แล้ว ให้ดำเนินการตามปกติ
-      const idToken = liff.getIDToken();
-      if (!idToken) throw new Error('No ID Token');
+      let userData;
+      
+      try {
+        // Try to get existing user
+        userData = await api(`${API_URL}/users/${profile.userId}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+      } catch (err) {
+        if (err.message.includes('404') || err.message.includes('400')) {
+          // User not found, create new user
+          setInitStep('กำลังสร้างบัญชีผู้ใช้...');
+          
+          const userDataToSend = {
+            userId: profile.userId,
+            displayName: profile.displayName,
+            pictureUrl: profile.pictureUrl
+          };
 
-      Cookies.set('authToken', idToken, { secure: true, sameSite: 'Strict', expires: 1 });
-      const profile = await liff.getProfile();
-      setUserInfo(prev => ({ ...prev, profile }));
-      await syncData(profile);
+          try {
+            await api(`${API_URL}/users`, {
+              method: 'POST',
+              headers: { Authorization: `Bearer ${token}` },
+              body: JSON.stringify(userDataToSend)
+            });
+
+            // Wait a bit for the server to process
+            await new Promise(resolve => setTimeout(resolve, 1000));
+
+            // Try to fetch the newly created user
+            userData = await api(`${API_URL}/users/${profile.userId}`, {
+              headers: { Authorization: `Bearer ${token}` }
+            });
+          } catch (postError) {
+            console.error('Failed to create user:', postError);
+            
+            // Fallback to default user data
+            userData = {
+              uid: profile.userId,
+              name: profile.displayName,
+              userpoint: 0,
+              displayName: profile.displayName,
+              pictureUrl: profile.pictureUrl
+            };
+          }
+        } else {
+          throw err;
+        }
+      }
+
+      setUserInfo(prev => ({ ...prev, ...userData }));
+      showToast('โหลดข้อมูลสำเร็จ', 'success');
 
     } catch (err) {
-      console.error('LIFF error:', err);
-      setError('การเริ่มต้นล้มเหลว: ' + err.message);
+      console.error('Sync error:', err);
+      setError(`เกิดข้อผิดพลาดในการโหลดข้อมูล: ${err.message}`);
     } finally {
-      setLoading(false);
+      setIsUpdating(false);
     }
-  };
-  init();
-  return () => abortRef.current?.abort();
-}, [syncData]);
-  useEffect(() => { const handler = () => { if (Date.now() - lastSync > 60000) prefetchData(); }; const events = ['click', 'scroll', 'keydown']; events.forEach(e => document.addEventListener(e, handler, { passive: true })); return () => events.forEach(e => document.removeEventListener(e, handler)); }, [lastSync, prefetchData]);
-  const safeName = useMemo(() => DOMPurify.sanitize(userInfo.name || userInfo.profile?.displayName || 'ผู้ใช้งาน'), [userInfo.name, userInfo.profile?.displayName]);
-  const user = useMemo(() => ({ uid: userInfo.uid, name: safeName, userpoint: userInfo.userpoint, profile: userInfo.profile, pictureUrl: userInfo.profile?.pictureUrl }), [userInfo, safeName]);
+  }, [showToast]);
 
-  // --- RENDER LOGIC ---
-  if (loading) return <Spinner />;
+  const handleRefresh = useCallback(() => {
+    if (userInfo.profile) {
+      syncData(userInfo.profile);
+    }
+  }, [syncData, userInfo.profile]);
 
-  if (error) return (
-    <div className="fixed inset-0 bg-[#f5f5f5] flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full text-center border border-[#8d6e63]/30">
-        <div className="text-red-500 mb-4 inline-block"><Icons.Error /></div>
-        <h2 className="text-xl font-bold text-[#3e2723] mb-2" style={{ fontFamily: 'Kanit, sans-serif' }}>เกิดข้อผิดพลาด</h2>
-        <p className="text-[#5d4037] mb-6">{error}</p>
-        <button onClick={() => window.location.reload()} className="w-full bg-gradient-to-r from-[#5d4037] to-[#3e2723] text-[#f5f5f5] py-3 rounded-xl hover:from-[#3e2723] hover:to-[#2e1912] transition-all duration-300">รีเฟรชหน้า</button>
+  useEffect(() => {
+    let isMounted = true;
+    
+    const initializeLiff = async () => {
+      try {
+        if (!LIFF_ID) {
+          throw new Error('LIFF ID ไม่ถูกตั้งค่า');
+        }
+
+        setInitStep('กำลังเริ่มต้น LIFF...');
+        console.log('Initializing LIFF with ID:', LIFF_ID);
+
+        // Initialize LIFF
+        await liff.init({ 
+          liffId: LIFF_ID,
+          withLoginOnExternalBrowser: true // สำหรับ LINE browser
+        });
+
+        if (!isMounted) return;
+
+        console.log('LIFF initialized successfully');
+        setInitStep('กำลังตรวจสอบการเข้าสู่ระบบ...');
+
+        // Check if user is logged in
+        if (!liff.isLoggedIn()) {
+          console.log('User not logged in, redirecting to login...');
+          liff.login();
+          return;
+        }
+
+        setInitStep('กำลังดึงข้อมูลโปรไฟล์...');
+
+        // Get ID token
+        const idToken = liff.getIDToken();
+        if (!idToken) {
+          throw new Error('ไม่สามารถดึง ID Token ได้');
+        }
+
+        // Set cookie with secure options
+        Cookies.set('authToken', idToken, { 
+          secure: window.location.protocol === 'https:', 
+          sameSite: 'Strict', 
+          expires: 1 
+        });
+
+        // Get user profile
+        const profile = await liff.getProfile();
+        console.log('Profile obtained:', profile);
+
+        if (!isMounted) return;
+
+        // Set profile first
+        setUserInfo(prev => ({ ...prev, profile }));
+
+        // Then sync data
+        await syncData(profile);
+
+      } catch (err) {
+        console.error('LIFF initialization error:', err);
+        if (!isMounted) return;
+        
+        setError(`การเริ่มต้นล้มเหลว: ${err.message}`);
+        
+        // Auto retry after 3 seconds for network issues
+        if (err.name === 'AbortError' || err.message.includes('network')) {
+          setTimeout(() => {
+            if (isMounted) {
+              window.location.reload();
+            }
+          }, 3000);
+        }
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    initializeLiff();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [syncData]);
+
+  const safeName = useMemo(() => {
+    const name = userInfo.name || userInfo.profile?.displayName || 'ผู้ใช้งาน';
+    return DOMPurify.sanitize(name);
+  }, [userInfo.name, userInfo.profile?.displayName]);
+
+  const user = useMemo(() => ({
+    uid: userInfo.uid,
+    name: safeName,
+    userpoint: userInfo.userpoint,
+    profile: userInfo.profile,
+    pictureUrl: userInfo.profile?.pictureUrl
+  }), [userInfo, safeName]);
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="fixed inset-0 bg-[#f5f5f5] flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full text-center border border-[#8d6e63]/30">
+          <div className="mb-6">
+            <Icons.Spinner className="w-12 h-12 mx-auto text-[#5d4037]" />
+          </div>
+          <h2 className="text-xl font-bold text-[#3e2723] mb-2" style={{ fontFamily: 'Kanit, sans-serif' }}>
+            กำลังโหลด
+          </h2>
+          <p className="text-[#5d4037] text-sm">{initStep}</p>
+          <div className="mt-4 bg-[#f5f5f5] rounded-lg p-3">
+            <div className="w-full bg-[#e0e0e0] rounded-full h-2">
+              <div className="bg-gradient-to-r from-[#5d4037] to-[#3e2723] h-2 rounded-full animate-pulse" style={{ width: '60%' }}></div>
+            </div>
+          </div>
+        </div>
       </div>
-    </div>
-  );
+    );
+  }
 
+  // Error state
+  if (error) {
+    return (
+      <div className="fixed inset-0 bg-[#f5f5f5] flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full text-center border border-[#8d6e63]/30">
+          <div className="text-red-500 mb-4 inline-block">
+            <Icons.Error />
+          </div>
+          <h2 className="text-xl font-bold text-[#3e2723] mb-2" style={{ fontFamily: 'Kanit, sans-serif' }}>
+            เกิดข้อผิดพลาด
+          </h2>
+          <p className="text-[#5d4037] mb-6 text-sm">{error}</p>
+          <div className="space-y-3">
+            <button 
+              onClick={() => window.location.reload()} 
+              className="w-full bg-gradient-to-r from-[#5d4037] to-[#3e2723] text-[#f5f5f5] py-3 rounded-xl hover:from-[#3e2723] hover:to-[#2e1912] transition-all duration-300"
+            >
+              รีเฟรชหน้า
+            </button>
+            <button 
+              onClick={() => {
+                Cookies.remove('authToken');
+                window.location.reload();
+              }}
+              className="w-full bg-[#f5f5f5] text-[#5d4037] py-3 rounded-xl border-2 border-[#8d6e63]/30 hover:bg-[#e0e0e0] transition-all duration-300"
+            >
+              เข้าสู่ระบบใหม่
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Main render
   return (
     <div className="min-h-screen bg-[#f5f5f5] flex flex-col" style={{ fontFamily: 'Prompt, sans-serif' }}>
       <Navbar user={user} safeName={safeName} />
@@ -393,11 +543,27 @@ useEffect(() => {
       <main className="flex-1 p-4 sm:p-6 flex items-start justify-center">
         <div className="w-full max-w-md">
           <div className="bg-white rounded-3xl shadow-2xl border border-[#8d6e63]/30 overflow-hidden">
-            <ProfileHeader user={user} safeName={safeName} isUpdating={isUpdating} isPolling={isPolling} prefetchData={prefetchData} copyToClipboard={copyToClipboard} />
+            <ProfileHeader 
+              user={user} 
+              safeName={safeName} 
+              copyToClipboard={copyToClipboard} 
+            />
+            
             <div className="p-4 sm:p-6 space-y-4">
-              <PointsCard userpoint={userInfo.userpoint} pointsAnimation={pointsAnimation} prefetchData={prefetchData} />
-              <UserIdAccordion uid={userInfo.uid} copyToClipboard={copyToClipboard} />
-              <RefreshButton onClick={() => syncData(userInfo.profile)} isUpdating={isUpdating} />
+              <PointsCard 
+                userpoint={userInfo.userpoint} 
+                pointsAnimation={pointsAnimation} 
+              />
+              
+              <UserIdAccordion 
+                uid={userInfo.uid} 
+                copyToClipboard={copyToClipboard} 
+              />
+              
+              <RefreshButton 
+                onClick={handleRefresh} 
+                isUpdating={isUpdating} 
+              />
             </div>
           </div>
         </div>
