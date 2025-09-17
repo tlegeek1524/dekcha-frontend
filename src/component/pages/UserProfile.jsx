@@ -335,15 +335,38 @@ export default function UserProfile() {
   const isPolling = useSmartPolling(() => backgroundSync(userInfo.profile), syncCount > 10 ? 45000 : 30000);
   const syncData = useCallback(async (profile, silent = false) => { if (!profile?.userId) return; const cacheKey = `user_${profile.userId}`; const cached = getCached(cacheKey); if (cached && silent) { setUserInfo(prev => ({ ...prev, ...cached })); return; } try { const token = Cookies.get('authToken'); if (!token) throw new Error('No token'); if (!silent) { showToast('กำลังอัปเดต...', 'info'); setIsUpdating(true); } if (abortRef.current) abortRef.current.abort(); abortRef.current = new AbortController(); let userData; try { userData = await api(`${API_URL}/users/${profile.userId}`, { headers: { Authorization: `Bearer ${token}` } }); } catch (err) { if (err.message.includes('404') || err.message.includes('400')) { const userDataToSend = { userId: profile.userId, displayName: profile.displayName, pictureUrl: profile.pictureUrl }; if (!silent) showToast('กำลังสร้างบัญชี...', 'info'); try { await api(`${API_URL}/users`, { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(userDataToSend) }); await new Promise(r => setTimeout(r, 1000)); userData = await api(`${API_URL}/users/${profile.userId}`, { headers: { Authorization: `Bearer ${token}` } }); } catch (postError) { console.error('Failed to create user:', postError); userData = { uid: profile.userId, name: profile.displayName, userpoint: 0, displayName: profile.displayName, pictureUrl: profile.pictureUrl }; } } else throw err; } setCache(cacheKey, userData); setUserInfo(prev => ({ ...prev, ...userData })); setLastSync(Date.now()); if (!silent) showToast('อัปเดตสำเร็จ', 'success'); } catch (err) { console.error('Sync error:', err); if (!silent) showToast('เกิดข้อผิดพลาด', 'error'); } finally { setIsUpdating(false); } }, [showToast]);
   const prefetchData = useCallback(() => { if (userInfo.profile) backgroundSync(userInfo.profile); }, [backgroundSync, userInfo.profile]);
-  useEffect(() => {
-    const init = async () => {
-      try { await liff.init({ liffId: LIFF_ID }); if (!liff.isLoggedIn()) { liff.login(); return; } const idToken = liff.getIDToken(); if (!idToken) throw new Error('No ID Token'); Cookies.set('authToken', idToken, { secure: true, sameSite: 'Strict', expires: 1 }); const profile = await liff.getProfile(); setUserInfo(prev => ({ ...prev, profile })); await syncData(profile); } catch (err) {
-        console.error('LIFF error:', err); setError('การเริ่มต้นล้มเหลว: ' + err.message); setTimeout(() => {
-          window.location.reload();
-        }, 1000);
-      } finally { setLoading(false); }
-    }; init(); return () => abortRef.current?.abort();
-  }, [syncData]);
+// UserProfile.jsx (ที่แก้ไขแล้ว)
+useEffect(() => {
+  const init = async () => {
+    try {
+      await liff.init({ liffId: LIFF_ID });
+
+      // ตรวจสอบว่าผู้ใช้ยังไม่ได้ล็อกอิน
+      // ถ้ายัง ให้เปลี่ยนเส้นทางไปที่หน้าล็อกอิน
+      if (!liff.isLoggedIn()) {
+        window.location.href = '/'; // เปลี่ยนเส้นทางไปที่หน้า login.jsx
+        return; // หยุดการทำงานของโค้ดที่เหลือ
+      }
+
+      // ถ้าผู้ใช้ล็อกอินอยู่แล้ว ให้ดำเนินการตามปกติ
+      const idToken = liff.getIDToken();
+      if (!idToken) throw new Error('No ID Token');
+
+      Cookies.set('authToken', idToken, { secure: true, sameSite: 'Strict', expires: 1 });
+      const profile = await liff.getProfile();
+      setUserInfo(prev => ({ ...prev, profile }));
+      await syncData(profile);
+
+    } catch (err) {
+      console.error('LIFF error:', err);
+      setError('การเริ่มต้นล้มเหลว: ' + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+  init();
+  return () => abortRef.current?.abort();
+}, [syncData]);
   useEffect(() => { const handler = () => { if (Date.now() - lastSync > 60000) prefetchData(); }; const events = ['click', 'scroll', 'keydown']; events.forEach(e => document.addEventListener(e, handler, { passive: true })); return () => events.forEach(e => document.removeEventListener(e, handler)); }, [lastSync, prefetchData]);
   const safeName = useMemo(() => DOMPurify.sanitize(userInfo.name || userInfo.profile?.displayName || 'ผู้ใช้งาน'), [userInfo.name, userInfo.profile?.displayName]);
   const user = useMemo(() => ({ uid: userInfo.uid, name: safeName, userpoint: userInfo.userpoint, profile: userInfo.profile, pictureUrl: userInfo.profile?.pictureUrl }), [userInfo, safeName]);
