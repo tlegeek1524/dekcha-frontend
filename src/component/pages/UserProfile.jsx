@@ -392,33 +392,100 @@ export default function UserProfile() {
         setInitStep('กำลังเริ่มต้น LIFF...');
         console.log('Initializing LIFF with ID:', LIFF_ID);
 
+        // Check if we just came back from login redirect
+        const urlParams = new URLSearchParams(window.location.search);
+        const isFromRedirect = urlParams.has('liffRedirectUri') || 
+                              window.location.hash.includes('access_token') ||
+                              document.referrer.includes('access.line.me');
+
         // Initialize LIFF
         await liff.init({ 
           liffId: LIFF_ID,
-          withLoginOnExternalBrowser: true // สำหรับ LINE browser
+          withLoginOnExternalBrowser: true
         });
 
         if (!isMounted) return;
 
         console.log('LIFF initialized successfully');
+        console.log('isLoggedIn:', liff.isLoggedIn());
+        console.log('isFromRedirect:', isFromRedirect);
+
+        // If coming from redirect, wait a bit for LIFF to process
+        if (isFromRedirect) {
+          setInitStep('กำลังประมวลผลการเข้าสู่ระบบ...');
+          await new Promise(resolve => setTimeout(resolve, 2000));
+        }
+
         setInitStep('กำลังตรวจสอบการเข้าสู่ระบบ...');
 
-        // Check if user is logged in
+        // Check login status multiple times if needed
+        let loginAttempts = 0;
+        const maxAttempts = 5;
+        
+        while (!liff.isLoggedIn() && loginAttempts < maxAttempts) {
+          console.log(`Login attempt ${loginAttempts + 1}/${maxAttempts}`);
+          
+          if (loginAttempts === 0 && !isFromRedirect) {
+            // First attempt - try to login
+            console.log('Attempting to login...');
+            setInitStep('กำลังเข้าสู่ระบบ...');
+            
+            try {
+              await liff.login({
+                redirectUri: window.location.href
+              });
+              return; // This will redirect, so we return here
+            } catch (loginErr) {
+              console.error('Login failed:', loginErr);
+            }
+          }
+          
+          // Wait and check again
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          loginAttempts++;
+        }
+
+        // If still not logged in after attempts
         if (!liff.isLoggedIn()) {
-          console.log('User not logged in, redirecting to login...');
-          liff.login();
-          return;
+          // Try to get profile anyway (sometimes works even when isLoggedIn returns false)
+          try {
+            setInitStep('กำลังดึงข้อมูลโปรไฟล์...');
+            const profile = await liff.getProfile();
+            const idToken = liff.getIDToken();
+            
+            if (profile && idToken) {
+              console.log('Got profile despite login status:', profile);
+              
+              // Set cookie
+              Cookies.set('authToken', idToken, { 
+                secure: window.location.protocol === 'https:', 
+                sameSite: 'Strict', 
+                expires: 1 
+              });
+
+              if (!isMounted) return;
+
+              // Set profile and sync data
+              setUserInfo(prev => ({ ...prev, profile }));
+              await syncData(profile);
+              return;
+            }
+          } catch (profileErr) {
+            console.error('Failed to get profile:', profileErr);
+          }
+          
+          throw new Error('ไม่สามารถเข้าสู่ระบบได้ กรุณาลองใหม่อีกครั้ง');
         }
 
         setInitStep('กำลังดึงข้อมูลโปรไฟล์...');
 
-        // Get ID token
+        // Get ID token and profile
         const idToken = liff.getIDToken();
         if (!idToken) {
           throw new Error('ไม่สามารถดึง ID Token ได้');
         }
 
-        // Set cookie with secure options
+        // Set cookie
         Cookies.set('authToken', idToken, { 
           secure: window.location.protocol === 'https:', 
           sameSite: 'Strict', 
@@ -443,13 +510,15 @@ export default function UserProfile() {
         
         setError(`การเริ่มต้นล้มเหลว: ${err.message}`);
         
-        // Auto retry after 3 seconds for network issues
-        if (err.name === 'AbortError' || err.message.includes('network')) {
+        // Auto retry after 5 seconds for specific errors
+        if (err.name === 'AbortError' || 
+            err.message.includes('network') || 
+            err.message.includes('ไม่สามารถเข้าสู่ระบบได้')) {
           setTimeout(() => {
             if (isMounted) {
               window.location.reload();
             }
-          }, 3000);
+          }, 5000);
         }
       } finally {
         if (isMounted) {
