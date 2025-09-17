@@ -16,21 +16,41 @@ export default function Login() {
 
   const initializeLiff = useCallback(async () => {
     try {
-      const cleanUrl = window.location.origin + window.location.pathname + window.location.hash;
-      if (window.location.search) {
+      // ปรับปรุง URL cleanup - เอา query params ออกหมด
+      const cleanUrl = window.location.origin + window.location.pathname;
+      if (window.location.search || window.location.hash) {
         window.history.replaceState(null, '', cleanUrl);
       }
 
-      await liff.init({ liffId: LIFF_ID });
+      // เพิ่ม timeout สำหรับ LIFF init
+      const initPromise = liff.init({ liffId: LIFF_ID });
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('LIFF initialization timeout')), 10000)
+      );
 
+      await Promise.race([initPromise, timeoutPromise]);
+
+      // ตรวจสอบสถานะการ login
       if (liff.isLoggedIn() && liff.getAccessToken()) {
-        // เปลี่ยนมาใช้การ redirect แบบ URL เต็มของ LIFF
-        window.location.replace(window.location.origin + '/login/userlogin');
+        // ใช้ setTimeout เพื่อให้ UI render เสร็จก่อน
+        setTimeout(() => {
+          // ใช้ href แทน replace เพื่อให้ browser navigate อย่างถูกต้อง
+          window.location.href = window.location.origin + '/login/userlogin';
+        }, 100);
         return;
       }
     } catch (err) {
       console.error('LIFF init failed:', err.toString(), err);
-      setStatus(prev => ({ ...prev, error: 'ไม่สามารถเริ่มต้น LIFF ได้' }));
+      let errorMessage = 'ไม่สามารถเริ่มต้น LIFF ได้';
+      
+      // ให้ข้อมูล error ที่ชัดเจนขึ้น
+      if (err.message.includes('timeout')) {
+        errorMessage = 'การเชื่อมต่อ LIFF ใช้เวลานานเกินไป';
+      } else if (err.message.includes('network')) {
+        errorMessage = 'ตรวจสอบการเชื่อมต่ออินเทอร์เน็ต';
+      }
+      
+      setStatus(prev => ({ ...prev, error: errorMessage }));
       message.error('เกิดข้อผิดพลาดในการโหลด ระบบ LIFF');
     } finally {
       setStatus(prev => ({ ...prev, isInitializing: false }));
@@ -38,24 +58,70 @@ export default function Login() {
   }, []);
 
   useEffect(() => {
+    // Preload fonts สำหรับ performance
     const link = document.createElement('link');
     link.href = 'https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&family=Prompt:wght@300;400;500;600;700&display=swap';
-    link.rel = 'stylesheet';
+    link.rel = 'preload';
+    link.as = 'style';
+    link.onload = () => {
+      link.rel = 'stylesheet';
+    };
     document.head.appendChild(link);
     
     initializeLiff();
+    
+    // Cleanup function
+    return () => {
+      if (link.parentNode) {
+        link.parentNode.removeChild(link);
+      }
+    };
   }, [initializeLiff]);
 
   const handleLogin = async () => {
     setStatus(prev => ({ ...prev, isLoggingIn: true, error: null }));
     message.loading({ content: 'กำลังเชื่อมต่อกับ LINE...', key: LOGIN_MESSAGE_KEY });
+    
     try {
-      await liff.login();
+      // ตรวจสอบว่าอยู่ใน LINE app หรือไม่
+      const isInLineApp = liff.isInClient();
+      
+      if (isInLineApp) {
+        // ถ้าอยู่ใน LINE app ให้ login แบบปกติ
+        await liff.login();
+      } else {
+        // ถ้าไม่ได้อยู่ใน LINE app ให้ redirect ไป LIFF URL
+        const liffUrl = `https://liff.line.me/${LIFF_ID}`;
+        window.location.href = liffUrl;
+      }
+      
+      message.success({ content: 'เข้าสู่ระบบสำเร็จ', key: LOGIN_MESSAGE_KEY });
+      
     } catch (err) {
       console.error('LIFF login error:', err.toString(), err);
-      message.error({ content: 'เข้าสู่ระบบไม่สำเร็จ', key: LOGIN_MESSAGE_KEY });
-      setStatus(prev => ({ ...prev, isLoggingIn: false, error: 'เข้าสู่ระบบไม่สำเร็จ' }));
+      
+      let errorMessage = 'เข้าสู่ระบบไม่สำเร็จ';
+      
+      // จัดการ error ที่เฉพาะเจาะจงขึ้น
+      if (err.message.includes('user_cancel')) {
+        errorMessage = 'การเข้าสู่ระบบถูกยกเลิก';
+      } else if (err.message.includes('network')) {
+        errorMessage = 'ปัญหาการเชื่อมต่อเครือข่าย';
+      }
+      
+      message.error({ content: errorMessage, key: LOGIN_MESSAGE_KEY });
+      setStatus(prev => ({ ...prev, isLoggingIn: false, error: errorMessage }));
     }
+  };
+
+  // เพิ่ม retry function สำหรับกรณี error
+  const handleRetry = () => {
+    setStatus({
+      isInitializing: true,
+      isLoggingIn: false,
+      error: null
+    });
+    initializeLiff();
   };
 
   if (status.isInitializing) {
@@ -81,7 +147,28 @@ export default function Login() {
             <div className="w-3 h-3 rounded-full bg-[#8d6e63] animate-bounce delay-200"></div>
           </div>
           
-          <p className="text-[#5d4037] opacity-70 text-sm">กำลังโหลด...</p>
+          <p className="text-[#5d4037] opacity-70 text-sm">กำลังเชื่อมต่อ LIFF...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // แสดง error state พร้อม retry button
+  if (status.error) {
+    return (
+      <div className="min-h-screen w-full flex flex-col items-center justify-center bg-gradient-to-br from-[#f5f5f5] to-[#f0f0f0] font-['Kanit',sans-serif] px-4 py-8">
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-red-100 mb-4">
+            <span className="text-red-500 text-4xl">⚠️</span>
+          </div>
+          <h2 className="text-2xl font-bold text-[#3e2723] mb-2">เกิดข้อผิดพลาด</h2>
+          <p className="text-[#5d4037] mb-4">{status.error}</p>
+          <button
+            onClick={handleRetry}
+            className="px-6 py-3 rounded-lg bg-[#8d6e63] text-white font-medium hover:bg-[#6d4c41] transition-colors"
+          >
+            ลองใหม่อีกครั้ง
+          </button>
         </div>
       </div>
     );
@@ -173,13 +260,23 @@ export default function Login() {
                 <span className="text-xs text-[#5d4037] opacity-60 font-light px-3 py-1 rounded-full bg-[#ffffff40] backdrop-blur-sm border border-[#8d6e6320] hover:opacity-80 transition-opacity">ปลอดภัย</span>
                 <span className="text-xs text-[#5d4037] opacity-60 font-light px-3 py-1 rounded-full bg-[#ffffff40] backdrop-blur-sm border border-[#8d6e6320] hover:opacity-80 transition-opacity">รวดเร็ว</span>
               </div>
+              
+              {/* เพิ่มข้อมูลช่วยเหลือสำหรับผู้ใช้ */}
+              <div className="mt-6 p-4 rounded-xl bg-[#ffffff50] backdrop-blur-sm border border-[#8d6e6320]">
+                <p className="text-xs text-[#5d4037] opacity-70 font-light leading-relaxed">
+                  💡 <strong>เคล็ดลับ:</strong> หากใช้งานในมือถือ กรุณาเปิดผ่าน LINE App เพื่อประสบการณ์การใช้งานที่ดีที่สุด
+                </p>
+              </div>
             </div>
           </div>
         </div>
 
         <div className="text-center mt-4">
           <p className="text-xs opacity-50 text-[#5d4037] font-light">
-            Powered by LINE Login • DeKcha Tea 2024
+            Powered by LINE Login • DekCha Tea 2024
+          </p>
+          <p className="text-xs opacity-40 text-[#5d4037] font-light mt-1">
+            LIFF ID: {LIFF_ID}
           </p>
         </div>
       </div>
