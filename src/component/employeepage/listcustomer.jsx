@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { Users, Phone, Calendar, Star, Search, Filter, RefreshCw, AlertCircle } from 'lucide-react';
+import { Users, Phone, Calendar, Star, Search, Filter, RefreshCw, AlertCircle, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
 import QuickActions from "../quickaction";
 
 const ListCustomer = () => {
@@ -10,6 +10,8 @@ const ListCustomer = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterActive, setFilterActive] = useState('all');
   const [showFilter, setShowFilter] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(15);
   const filterRef = useRef(null);
 
   // Utility function to get cookie
@@ -141,6 +143,25 @@ const ListCustomer = () => {
     });
   }, [customers, searchTerm, filterActive]);
 
+  // Pagination calculations
+  const paginationData = useMemo(() => {
+    const totalItems = filteredCustomers.length;
+    const totalPages = Math.ceil(totalItems / itemsPerPage);
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    const currentItems = filteredCustomers.slice(startIndex, endIndex);
+
+    return {
+      totalItems,
+      totalPages,
+      currentItems,
+      startIndex,
+      endIndex: Math.min(endIndex, totalItems),
+      hasNextPage: currentPage < totalPages,
+      hasPrevPage: currentPage > 1
+    };
+  }, [filteredCustomers, currentPage, itemsPerPage]);
+
   // Memoized statistics
   const stats = useMemo(() => {
     const totalCustomers = customers.length;
@@ -161,6 +182,21 @@ const ListCustomer = () => {
     });
   }, []);
 
+  // Pagination handlers
+  const goToPage = useCallback((page) => {
+    setCurrentPage(Math.max(1, Math.min(page, paginationData.totalPages)));
+  }, [paginationData.totalPages]);
+
+  const goToFirstPage = () => goToPage(1);
+  const goToLastPage = () => goToPage(paginationData.totalPages);
+  const goToPrevPage = () => goToPage(currentPage - 1);
+  const goToNextPage = () => goToPage(currentPage + 1);
+
+  // Reset to first page when search/filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, filterActive]);
+
   // Load data on component mount
   useEffect(() => {
     fetchCustomers();
@@ -179,6 +215,45 @@ const ListCustomer = () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [showFilter]);
+
+  // Generate page numbers for pagination
+  const getPageNumbers = useMemo(() => {
+    const { totalPages } = paginationData;
+    const delta = 2; // Number of pages to show around current page
+    const pages = [];
+    
+    const rangeStart = Math.max(2, currentPage - delta);
+    const rangeEnd = Math.min(totalPages - 1, currentPage + delta);
+
+    // Always show first page
+    if (totalPages > 0) {
+      pages.push(1);
+    }
+
+    // Add dots if there's gap between first page and range
+    if (rangeStart > 2) {
+      pages.push('...');
+    }
+
+    // Add pages in range
+    for (let i = rangeStart; i <= rangeEnd; i++) {
+      if (i !== 1 && i !== totalPages) {
+        pages.push(i);
+      }
+    }
+
+    // Add dots if there's gap between range and last page
+    if (rangeEnd < totalPages - 1) {
+      pages.push('...');
+    }
+
+    // Always show last page (if different from first)
+    if (totalPages > 1) {
+      pages.push(totalPages);
+    }
+
+    return pages;
+  }, [currentPage, paginationData.totalPages]);
 
   // Loading state
   if (loading) {
@@ -365,7 +440,7 @@ const ListCustomer = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {filteredCustomers.length === 0 ? (
+                {paginationData.currentItems.length === 0 ? (
                   <tr>
                     <td colSpan="5" className="text-center py-16">
                       <Users className="h-12 w-12 text-gray-300 mx-auto mb-4" />
@@ -375,7 +450,7 @@ const ListCustomer = () => {
                     </td>
                   </tr>
                 ) : (
-                  filteredCustomers.map((customer) => (
+                  paginationData.currentItems.map((customer) => (
                     <tr key={customer.id} className="hover:bg-gray-50 transition-colors duration-150">
                       <td className="py-4 px-6">
                         <div className="flex items-center gap-3">
@@ -425,7 +500,7 @@ const ListCustomer = () => {
 
           {/* Mobile Card Layout */}
           <div className="md:hidden">
-            {filteredCustomers.length === 0 ? (
+            {paginationData.currentItems.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-20 px-6">
                 <div className="bg-gray-50 rounded-full p-6 mb-6">
                   <Users className="h-12 w-12 text-gray-400" />
@@ -439,7 +514,7 @@ const ListCustomer = () => {
               </div>
             ) : (
               <div className="space-y-3 p-4">
-                {filteredCustomers.map((customer) => (
+                {paginationData.currentItems.map((customer) => (
                   <div
                     key={customer.id}
                     className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 hover:shadow-md hover:border-gray-200 transition-all duration-200"
@@ -529,9 +604,110 @@ const ListCustomer = () => {
           </div>
         </div>
 
+        {/* Pagination */}
+        {paginationData.totalPages > 1 && (
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 sm:p-6 mb-4 sm:mb-6">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+              {/* Results info */}
+              <div className="text-sm text-gray-600 order-2 sm:order-1">
+                แสดง {paginationData.startIndex + 1}-{paginationData.endIndex} จาก {paginationData.totalItems} รายการ
+              </div>
+
+              {/* Pagination controls */}
+              <div className="flex items-center gap-1 order-1 sm:order-2">
+                {/* First page button */}
+                <button
+                  onClick={goToFirstPage}
+                  disabled={!paginationData.hasPrevPage}
+                  className="p-2 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+                  title="หน้าแรก"
+                >
+                  <ChevronsLeft className="h-4 w-4" />
+                </button>
+
+                {/* Previous page button */}
+                <button
+                  onClick={goToPrevPage}
+                  disabled={!paginationData.hasPrevPage}
+                  className="p-2 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+                  title="หน้าก่อนหน้า"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </button>
+
+                {/* Page numbers */}
+                <div className="flex items-center gap-1 mx-2">
+                  {getPageNumbers.map((page, index) => (
+                    page === '...' ? (
+                      <span key={index} className="px-3 py-2 text-gray-500">...</span>
+                    ) : (
+                      <button
+                        key={index}
+                        onClick={() => goToPage(page)}
+                        className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-200 ${
+                          currentPage === page
+                            ? 'bg-blue-600 text-white shadow-sm'
+                            : 'text-gray-700 hover:bg-gray-50 border border-gray-200'
+                        }`}
+                      >
+                        {page}
+                      </button>
+                    )
+                  ))}
+                </div>
+
+                {/* Next page button */}
+                <button
+                  onClick={goToNextPage}
+                  disabled={!paginationData.hasNextPage}
+                  className="p-2 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+                  title="หน้าถัดไป"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+
+                {/* Last page button */}
+                <button
+                  onClick={goToLastPage}
+                  disabled={!paginationData.hasNextPage}
+                  className="p-2 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+                  title="หน้าสุดท้าย"
+                >
+                  <ChevronsRight className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Mobile pagination - simplified */}
+            <div className="flex sm:hidden items-center justify-between mt-4 pt-4 border-t border-gray-100">
+              <button
+                onClick={goToPrevPage}
+                disabled={!paginationData.hasPrevPage}
+                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <ChevronLeft className="h-4 w-4" />
+                ก่อนหน้า
+              </button>
+
+              <span className="text-sm text-gray-600 font-medium">
+                หน้า {currentPage} จาก {paginationData.totalPages}
+              </span>
+
+              <button
+                onClick={goToNextPage}
+                disabled={!paginationData.hasNextPage}
+                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                ถัดไป
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Footer */}
         <div className="mt-6 text-center text-gray-500 text-sm">
-          แสดงข้อมูล {filteredCustomers.length} จาก {customers.length} รายการ
+          แสดงข้อมูล {paginationData.totalItems} รายการทั้งหมด
         </div>
       </div>
     </div>
