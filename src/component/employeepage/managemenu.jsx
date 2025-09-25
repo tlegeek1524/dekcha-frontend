@@ -1000,6 +1000,7 @@ export default function MainMenuPage() {
   }, []);
 
   // Handle form submission
+  // Handle form submission
   const handleSubmit = useCallback(async () => {
     const errors = validateForm(formData);
     if (Object.keys(errors).length > 0) {
@@ -1010,23 +1011,24 @@ export default function MainMenuPage() {
     setUploading(true);
     
     try {
-      const menuId = isEditing && selectedMenu ? selectedMenu.idmenu : generateMenuId();
+      // For editing, use existing ID; for new menu, will get from API response
+      const tempMenuId = isEditing && selectedMenu ? selectedMenu.idmenu : generateMenuId();
       let imageUrl = formData.image && typeof formData.image === 'string' ? formData.image : null;
       
-      // Handle image upload
+      // Handle image upload for new menu (use temp ID for now)
       if (formData.image && typeof formData.image === 'object') {
         try {
           const compressedFile = await compressImage(formData.image);
-          imageUrl = await uploadImageToSupabase(compressedFile, menuId);
+          imageUrl = await uploadImageToSupabase(compressedFile, tempMenuId);
         } catch (uploadError) {
           console.error('Image upload error:', uploadError);
           showNotification('อัปโหลดภาพไม่สำเร็จ กรุณาลองใหม่', 'error');
+          setUploading(false);
           return;
         }
       }
 
       const menuData = {
-        idmenu: menuId,
         name: formData.name.trim(),
         point: parseInt(formData.point),
         category: formData.category.trim(),
@@ -1037,14 +1039,19 @@ export default function MainMenuPage() {
         image: imageUrl
       };
 
-      // Optimistic update
-      updateMenuItemsOptimistically(isEditing ? 'update' : 'add', menuData);
-      setLastUpdatedId(menuId);
-      setRecentUpdates(prev => new Set([...prev, menuId]));
-      setShowModal(false);
+      // Add idmenu only for editing
+      if (isEditing && selectedMenu) {
+        menuData.idmenu = selectedMenu.idmenu;
+      }
+
+      // Show different message for creating new menu
+      if (!isEditing) {
+        setShowModal(false);
+        showNotification('กำลังสร้างไอดีเมนู...', 'success');
+      }
 
       // API call
-      const url = isEditing ? `${API_URL}/menu/update/${menuId}` : `${API_URL}/menu/`;
+      const url = isEditing ? `${API_URL}/menu/update/${selectedMenu.idmenu}` : `${API_URL}/menu/`;
       const method = isEditing ? 'PUT' : 'POST';
       
       const response = await fetch(url, {
@@ -1060,32 +1067,49 @@ export default function MainMenuPage() {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
 
-      showNotification(
-        isEditing ? 'อัพเดตเมนูสำเร็จ' : 'เพิ่มเมนูใหม่สำเร็จ', 
-        'success'
-      );
-
-      // Clear recent update indicator after 5 seconds
-      setTimeout(() => {
-        setRecentUpdates(prev => {
-          const newSet = new Set(prev);
-          newSet.delete(menuId);
-          return newSet;
-        });
-      }, 5000);
+      const responseData = await response.json();
+      
+      if (isEditing) {
+        // For editing, update optimistically
+        const updatedMenuData = { ...selectedMenu, ...menuData };
+        updateMenuItemsOptimistically('update', updatedMenuData);
+        setLastUpdatedId(selectedMenu.idmenu);
+        setRecentUpdates(prev => new Set([...prev, selectedMenu.idmenu]));
+        setShowModal(false);
+        
+        showNotification('อัพเดตเมนูสำเร็จ', 'success');
+        
+        // Clear recent update indicator after 5 seconds
+        setTimeout(() => {
+          setRecentUpdates(prev => {
+            const newSet = new Set(prev);
+            newSet.delete(selectedMenu.idmenu);
+            return newSet;
+          });
+        }, 5000);
+      } else {
+        // For new menu, show success and refresh page
+        showNotification('สร้างเมนูใหม่สำเร็จ กำลังรีเฟรชหน้า...', 'success');
+        
+        // Refresh page after short delay to show success message
+        setTimeout(() => {
+          window.location.reload();
+        }, 1500);
+      }
 
     } catch (error) {
       console.error('Submit error:', error);
       showNotification('เกิดข้อผิดพลาด: ' + error.message, 'error');
       
-      // Revert optimistic update on error
+      // Revert optimistic update on error (only for editing)
       if (isEditing) {
         updateMenuItemsOptimistically('update', selectedMenu);
-      } else {
-        updateMenuItemsOptimistically('delete', { idmenu: menuId });
       }
     } finally {
-      setUploading(false);
+      if (isEditing) {
+        setUploading(false);
+      }
+      // For new menu, uploading state will be reset by page refresh
     }
   }, [formData, isEditing, selectedMenu, validateForm, updateMenuItemsOptimistically]);
 
